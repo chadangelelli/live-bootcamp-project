@@ -1,14 +1,16 @@
 use std::error::Error;
 
-use axum::{
-    http::StatusCode, 
-    response::IntoResponse, 
-    routing::post, 
-    serve::Serve, 
-    Router
-};
+use axum::{ routing::post, serve::Serve, Router };
 use tower_http::services::ServeDir;
 
+pub mod routes;
+use crate::routes::{ 
+ login_handler,
+ logout_handler,
+ signup_handler,
+ verify_2fa_handler,
+ verify_token_handler,
+};
 
 pub struct Application {
     server: Serve<Router, Router>,
@@ -23,7 +25,11 @@ impl Application {
 
         let router = Router::new()
             .nest_service("/", ServeDir::new("assets"))
-            .route("/signup", post(signup_handler));
+            .route("/login", post(login_handler))
+            .route("/logout", post(logout_handler))
+            .route("/signup", post(signup_handler))
+            .route("/verify_2fa", post(verify_2fa_handler))
+            .route("/verify_token", post(verify_token_handler));
 
         let server = axum::serve(listener, router);
 
@@ -34,8 +40,4 @@ impl Application {
         println!("listening on {}", &self.address);
         self.server.await
     }
-}
- 
-async fn signup_handler() -> impl IntoResponse {
-    StatusCode::OK.into_response()
 }
