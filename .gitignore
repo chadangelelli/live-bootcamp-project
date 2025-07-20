@@ -1,0 +1,5 @@
+*.swp
+*.swo
+.clj-kondo
+.DS_Store
+.lsp
