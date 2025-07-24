@@ -29,4 +29,18 @@ impl TestApp {
             .await 
             .expect(&format!("[auth_service::TestApp] Failed to get '{}' path.", path))
     }
+
+    pub async fn post_signup<Body>(&self, body: &Body) -> reqwest::Response
+    where Body: serde::Serialize, {
+        self.http_client
+            .post(&format!("{}/signup", &self.address))
+            .json(body)
+            .send()
+            .await 
+            .expect("[auth_service::TestApp] Failed to post signup request.")
+    }
+}
+
+pub fn get_random_email() -> String {
+    format!("{}@example.com", uuid::Uuid::new_v4())
 }
