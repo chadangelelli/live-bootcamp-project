@@ -24,7 +24,6 @@ dependencies = [
  "askama",
  "axum",
  "axum-extra",
- "nextest",
  "reqwest",
  "serde",
  "serde_json",
@@ -643,12 +642,6 @@ dependencies = [
  "wasi",
  "windows-sys 0.52.0",
 ]
-
-[[package]]
-name = "nextest"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4916d44d6c0a42693f966f0987acb4fa43ec3ca85d957c02f30c7ad160bfe7e6"
 
 [[package]]
 name = "nom"
