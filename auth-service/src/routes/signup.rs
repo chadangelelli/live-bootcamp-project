@@ -1,33 +1,41 @@
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 
-use crate::{app_state::AppState, domain::User};
+use crate::{
+    app_state::AppState,
+    domain::{AuthApiError, User},
+};
 
 pub async fn signup_handler(
     State(state): State<AppState>,
-    Json(request): Json<SignupRequest>
+    Json(request): Json<SignupRequest>,
 ) -> impl IntoResponse {
-    let user =  User::new(
-        request.email,
-        request.password,
-        request.requires_2fa,
-    ); 
+    let email = request.email.trim().to_string();
+    let password = request.password.trim().to_string();
+
+    // Validate email and password
+    if email.is_empty() || !email.contains('@') || password.chars().count() < 8 {
+        return AuthApiError::InvalidCredentials.into_response();
+    }
 
     let mut user_store = state.user_store.write().await;
 
-    let user_created = user_store.add_user(user)
-        .map_err(|e| {
-            eprintln!("Error adding user: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to add user")
-        });
+    // Check if the user already exists
+    if user_store.user_exists(&email).await {
+        return AuthApiError::UserAlreadyExists.into_response();
+    }
 
-    if let Err(err) = user_created {
-        return err.into_response();
+    let user = User::new(email, password, request.requires_2fa);
+
+    // Return UnexpectedError if adding user fails
+    if let Err(e) = user_store.add_user(user).await {
+        eprintln!("Error adding user: {}", e);
+        return AuthApiError::UnexpectedError.into_response();
     }
 
     let response = Json(SignupResponse {
         message: "User created successfully.".to_string(),
-    }); 
+    });
 
     (StatusCode::CREATED, response).into_response()
 }
@@ -37,7 +45,7 @@ pub struct SignupRequest {
     pub email: String,
     pub password: String,
     #[serde(rename = "requires2FA")]
-    pub requires_2fa: bool, 
+    pub requires_2fa: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
