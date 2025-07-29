@@ -9,7 +9,7 @@ async fn should_return_422_if_malformed_input() {
 
     let test_cases = [
         json!({
-            "password": "password123",
+            "password": "P4SS!W0rd",
             "requires2FA": true,
         }),
         json!({
@@ -24,7 +24,12 @@ async fn should_return_422_if_malformed_input() {
     for test_case in test_cases.iter() {
         let response = app.post_signup(test_case).await;
 
-        assert_eq!(response.status().as_u16(), 422, "Failed for input: {:?}", test_case);
+        assert_eq!(
+            response.status().as_u16(),
+            422,
+            "Failed for input: {:?}",
+            test_case
+        );
     }
 }
 
@@ -34,20 +39,21 @@ async fn should_return_201_if_valid_input() {
 
     let valid_input = json!({
         "email": get_random_email(),
-        "password": "password123",
+        "password": "P4SS!W0rd",
         "requires2FA": true,
     });
 
     let response = app.post_signup(&valid_input).await;
 
-     let expected_response = SignupResponse {
+    let expected_response = SignupResponse {
         message: "User created successfully.".to_owned(),
     };
 
     assert_eq!(
         response.status().as_u16(),
-        201, 
-        "Failed for valid input: {:?}", valid_input
+        201,
+        "Failed for valid input: {:?}",
+        valid_input
     );
 
     assert_eq!(
@@ -63,19 +69,19 @@ async fn should_return_201_if_valid_input() {
 /// The input is considered invalid if:
 /// - The email is empty or does not contain '@'
 /// - The password is less than 8 characters
-/// Create an array of invalid inputs. Then, iterate through the array and 
+/// Create an array of invalid inputs. Then, iterate through the array and
 /// make HTTP calls to the signup route. Assert a 400 HTTP status code is returned.
 #[tokio::test]
 async fn should_return_400_if_invalid_input() {
     let input = [
         json!({
             "email": "",
-            "password": "password123",
+            "password": "P4SS!W0rd",
             "requires2FA": true,
         }),
         json!({
             "email": "invalid-email",
-            "password": "password123",
+            "password": "P4SS!W0rd",
             "requires2FA": true,
         }),
         json!({
@@ -83,7 +89,7 @@ async fn should_return_400_if_invalid_input() {
             "password": "short",
             "requires2FA": true,
         }),
-    ];  
+    ];
 
     let app = TestApp::new().await;
 
@@ -92,7 +98,7 @@ async fn should_return_400_if_invalid_input() {
 
         assert_eq!(response.status().as_u16(), 400, "Failed for input: {:?}", i);
 
-                assert_eq!(
+        assert_eq!(
             response
                 .json::<ErrorResponse>()
                 .await
@@ -103,7 +109,7 @@ async fn should_return_400_if_invalid_input() {
     }
 }
 
-/// Call the signup route twice (w/ valid input). 
+/// Call the signup route twice (w/ valid input).
 /// The second request should fail with a 409 HTTP status code    
 #[tokio::test]
 async fn should_return_409_if_email_already_exists() {
@@ -111,7 +117,7 @@ async fn should_return_409_if_email_already_exists() {
 
     let valid_input = json!({
         "email": get_random_email(),
-        "password": "password123",
+        "password": "P4SS!W0rd",
         "requires2FA": true,
     });
 
@@ -130,5 +136,5 @@ async fn should_return_409_if_email_already_exists() {
             .expect("Could not deserialize response body to ErrorResponse")
             .error,
         "User already exists".to_owned()
-    );  
+    );
 }

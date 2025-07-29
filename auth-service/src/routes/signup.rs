@@ -3,24 +3,26 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     app_state::AppState,
-    domain::{AuthApiError, User},
+    domain::{AuthApiError, Email, Password, User},
 };
 
+#[axum::debug_handler]
 pub async fn signup_handler(
     State(state): State<AppState>,
     Json(request): Json<SignupRequest>,
 ) -> impl IntoResponse {
-    let email = request.email.trim().to_string();
-    let password = request.password.trim().to_string();
+    let email = match Email::parse(request.email) {
+        Ok(email) => email,
+        Err(_) => return AuthApiError::InvalidCredentials.into_response(),
+    };
 
-    // Validate email and password
-    if email.is_empty() || !email.contains('@') || password.chars().count() < 8 {
-        return AuthApiError::InvalidCredentials.into_response();
-    }
+    let password = match Password::parse(request.password) {
+        Ok(password) => password,
+        Err(_) => return AuthApiError::InvalidCredentials.into_response(),
+    };
 
     let mut user_store = state.user_store.write().await;
 
-    // Check if the user already exists
     if user_store.user_exists(&email).await {
         return AuthApiError::UserAlreadyExists.into_response();
     }

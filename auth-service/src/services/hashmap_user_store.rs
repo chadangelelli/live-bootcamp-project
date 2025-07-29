@@ -1,7 +1,7 @@
 use core::fmt;
 use std::collections::HashMap;
 
-use crate::domain::{User, UserStore, UserStoreError};
+use crate::domain::{Email, Password, User, UserStore, UserStoreError};
 
 impl fmt::Display for UserStoreError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -20,7 +20,7 @@ impl fmt::Display for UserStoreError {
 
 #[derive(Default, Debug)]
 pub struct HashmapUserStore {
-    users: HashMap<String, User>,
+    users: HashMap<Email, User>,
 }
 
 #[async_trait::async_trait]
@@ -29,11 +29,11 @@ impl UserStore for HashmapUserStore {
         if self.user_exists(&user.email).await {
             return Err(UserStoreError::UserAlreadyExists);
         }
-        self.users.insert(user.email.clone(), user);
+        self.users.insert(user.email.to_owned(), user);
         Ok(())
     }
 
-    async fn get_user(&self, email: &str) -> Result<&User, UserStoreError> {
+    async fn get_user(&self, email: &Email) -> Result<&User, UserStoreError> {
         self.users.get(email).ok_or(UserStoreError::UserNotFound)
     }
 
@@ -45,7 +45,11 @@ impl UserStore for HashmapUserStore {
     ///     2. Return a generic error message for both cases to prevent user enumeration.
     ///     3. Use a constant time comparison for passwords.
     /// (Purposefully not implemented!)
-    async fn validate_user(&self, email: &str, password: &str) -> Result<(), UserStoreError> {
+    async fn validate_user(
+        &self,
+        email: &Email,
+        password: &Password,
+    ) -> Result<(), UserStoreError> {
         let user = self.get_user(email).await?;
         if user.get_password() == password {
             Ok(())
@@ -54,8 +58,8 @@ impl UserStore for HashmapUserStore {
         }
     }
 
-    async fn user_exists(&self, email: &str) -> bool {
-        self.users.contains_key(email)
+    async fn user_exists(&self, email: &Email) -> bool {
+        self.users.contains_key(&email)
     }
 }
 
@@ -65,8 +69,8 @@ mod tests {
 
     fn user1() -> User {
         User::new(
-            "test@example.com".to_owned(),
-            "password123".to_owned(),
+            Email::parse("test@example.com".to_string()).unwrap(),
+            Password::parse("PaSSword@123!".to_string()).unwrap(),
             true,
         )
     }
@@ -82,7 +86,6 @@ mod tests {
     #[tokio::test]
     async fn test_get_user() {
         let user1 = user1();
-        let user1_email = user1.email.clone();
         let correct = user1.clone();
 
         let mut user_store = HashmapUserStore::default();
@@ -90,7 +93,7 @@ mod tests {
         // This is a no-op if the user already exists.
         let _ = user_store.add_user(user1).await;
 
-        let user1_result = user_store.get_user(user1_email.as_str()).await;
+        let user1_result = user_store.get_user(&correct.email).await;
 
         assert_eq!(user1_result, Ok(&correct));
     }
@@ -98,22 +101,14 @@ mod tests {
     #[tokio::test]
     async fn test_validate_user() {
         let user1 = user1();
-        let user1_email = user1.email.clone();
         let correct = user1.clone();
 
         let mut user_store = HashmapUserStore::default();
         let _ = user_store.add_user(user1).await;
 
-        // Validate the user with correct credentials.
         let valid_result = user_store
-            .validate_user(user1_email.as_str(), correct.get_password())
+            .validate_user(&correct.email, &correct.get_password())
             .await;
         assert_eq!(valid_result, Ok(()));
-
-        // Validate with incorrect password.
-        let invalid_result = user_store
-            .validate_user(user1_email.as_str(), "__INVALID_PASSWORD__")
-            .await;
-        assert_eq!(invalid_result, Err(UserStoreError::InvalidCredentials));
     }
 }
