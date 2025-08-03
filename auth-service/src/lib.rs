@@ -14,9 +14,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use tower_http::services::ServeDir;
 
-use crate::routes::{
-    login_handler, logout_handler, signup_handler, verify_2fa_handler, verify_token_handler,
-};
+use crate::routes::{login, logout, signup, verify_2fa, verify_token};
 use domain::AuthApiError;
 
 #[derive(Serialize, Deserialize)]
@@ -28,7 +26,11 @@ impl IntoResponse for AuthApiError {
     fn into_response(self) -> Response {
         let (status, error_message) = match self {
             AuthApiError::UserAlreadyExists => (StatusCode::CONFLICT, "User already exists"),
+            AuthApiError::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized"),
             AuthApiError::InvalidCredentials => (StatusCode::BAD_REQUEST, "Invalid credentials"),
+            AuthApiError::IncorrectCredentials => {
+                (StatusCode::UNAUTHORIZED, "Incorrect credentials")
+            }
             AuthApiError::UnexpectedError => {
                 (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
             }
@@ -69,11 +71,11 @@ pub struct Application {
 impl Application {
     pub async fn build(app_state: AppState, address: &str) -> Result<Self, Box<dyn Error>> {
         let router = Router::new()
-            .route("/login", post(login_handler))
-            .route("/logout", post(logout_handler))
-            .route("/signup", post(signup_handler))
-            .route("/verify_2fa", post(verify_2fa_handler))
-            .route("/verify_token", post(verify_token_handler))
+            .route("/login", post(login))
+            .route("/logout", post(logout))
+            .route("/signup", post(signup))
+            .route("/verify_2fa", post(verify_2fa))
+            .route("/verify_token", post(verify_token))
             .nest_service("/", ServeDir::new("assets"))
             .with_state(app_state);
 

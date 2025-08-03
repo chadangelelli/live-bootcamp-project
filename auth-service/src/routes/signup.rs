@@ -6,8 +6,7 @@ use crate::{
     domain::{AuthApiError, Email, Password, User, UserStoreError},
 };
 
-#[axum::debug_handler]
-pub async fn signup_handler(
+pub async fn signup(
     State(state): State<AppState>,
     Json(request): Json<SignupRequest>,
 ) -> Result<impl IntoResponse, AuthApiError> {
