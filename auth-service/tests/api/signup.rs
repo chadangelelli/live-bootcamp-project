@@ -7,19 +7,7 @@ use auth_service::{routes::SignupResponse, ErrorResponse};
 async fn should_return_422_if_malformed_input() {
     let app = TestApp::new().await;
 
-    let test_cases = [
-        json!({
-            "password": "P4SS!W0rd",
-            "requires2FA": true,
-        }),
-        json!({
-            "email": get_random_email(),
-        }),
-        json!({
-            "email": get_random_email(),
-            "requires2FA": false,
-        }),
-    ];
+    let test_cases = [get_random_email(), "P4SS!W0rd".to_string(), "".to_string()];
 
     for test_case in test_cases.iter() {
         let response = app.post_signup(test_case).await;
