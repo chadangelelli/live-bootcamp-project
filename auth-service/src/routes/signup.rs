@@ -3,43 +3,33 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     app_state::AppState,
-    domain::{AuthApiError, Email, Password, User},
+    domain::{AuthApiError, Email, Password, User, UserStoreError},
 };
 
 #[axum::debug_handler]
 pub async fn signup_handler(
     State(state): State<AppState>,
     Json(request): Json<SignupRequest>,
-) -> impl IntoResponse {
-    let email = match Email::parse(request.email) {
-        Ok(email) => email,
-        Err(_) => return AuthApiError::InvalidCredentials.into_response(),
-    };
-
-    let password = match Password::parse(request.password) {
-        Ok(password) => password,
-        Err(_) => return AuthApiError::InvalidCredentials.into_response(),
-    };
-
-    let mut user_store = state.user_store.write().await;
-
-    if user_store.user_exists(&email).await {
-        return AuthApiError::UserAlreadyExists.into_response();
-    }
+) -> Result<impl IntoResponse, AuthApiError> {
+    let email = Email::parse(request.email).map_err(|_| AuthApiError::InvalidCredentials)?;
+    let password =
+        Password::parse(request.password).map_err(|_| AuthApiError::InvalidCredentials)?;
 
     let user = User::new(email, password, request.requires_2fa);
-
-    // Return UnexpectedError if adding user fails
-    if let Err(e) = user_store.add_user(user).await {
-        eprintln!("Error adding user: {}", e);
-        return AuthApiError::UnexpectedError.into_response();
+    let result = state.user_store.write().await.add_user(user).await;
+    match result {
+        Ok(_) => Ok((
+            StatusCode::CREATED,
+            Json(SignupResponse {
+                message: "User created successfully.".to_string(),
+            }),
+        )),
+        Err(UserStoreError::UserAlreadyExists) => Err(AuthApiError::UserAlreadyExists),
+        Err(e) => {
+            eprintln!("Error adding user: {}", e);
+            Err(AuthApiError::UnexpectedError)
+        }
     }
-
-    let response = Json(SignupResponse {
-        message: "User created successfully.".to_string(),
-    });
-
-    (StatusCode::CREATED, response).into_response()
 }
 
 #[derive(Deserialize)]
