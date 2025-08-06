@@ -1,7 +1,3 @@
-mod domain;
-pub mod routes;
-pub mod services;
-
 use std::error::Error;
 
 use axum::{
@@ -14,8 +10,13 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use tower_http::services::ServeDir;
 
-use crate::routes::{login, logout, signup, verify_2fa, verify_token};
+mod domain;
+pub mod routes;
+pub mod services;
+pub mod utils;
+
 use domain::AuthApiError;
+use routes::{login, logout, signup, verify_2fa, verify_token};
 
 #[derive(Serialize, Deserialize)]
 pub struct ErrorResponse {
