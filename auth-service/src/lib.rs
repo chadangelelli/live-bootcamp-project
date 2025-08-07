@@ -1,14 +1,14 @@
 use std::error::Error;
 
 use axum::{
-    http::StatusCode,
+    http::{Method, StatusCode},
     response::{IntoResponse, Response},
     routing::post,
     serve::Serve,
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
-use tower_http::services::ServeDir;
+use tower_http::{cors::CorsLayer, services::ServeDir};
 
 mod domain;
 pub mod routes;
@@ -32,6 +32,8 @@ impl IntoResponse for AuthApiError {
             AuthApiError::IncorrectCredentials => {
                 (StatusCode::UNAUTHORIZED, "Incorrect credentials")
             }
+            AuthApiError::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid token"),
+            AuthApiError::MissingToken => (StatusCode::BAD_REQUEST, "Missing token"),
             AuthApiError::UnexpectedError => {
                 (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
             }
@@ -71,6 +73,16 @@ pub struct Application {
 
 impl Application {
     pub async fn build(app_state: AppState, address: &str) -> Result<Self, Box<dyn Error>> {
+        let allowed_origins = [
+            "http://localhost:8000".parse()?,
+            "http://167.71.20.198:8000".parse()?,
+        ];
+
+        let cors = CorsLayer::new()
+            .allow_methods([Method::GET, Method::POST])
+            .allow_credentials(true)
+            .allow_origin(allowed_origins);
+
         let router = Router::new()
             .route("/login", post(login))
             .route("/logout", post(logout))
@@ -78,7 +90,8 @@ impl Application {
             .route("/verify_2fa", post(verify_2fa))
             .route("/verify_token", post(verify_token))
             .nest_service("/", ServeDir::new("assets"))
-            .with_state(app_state);
+            .with_state(app_state)
+            .layer(cors);
 
         let listener = tokio::net::TcpListener::bind(address).await?;
         let address = listener.local_addr()?.to_string();
