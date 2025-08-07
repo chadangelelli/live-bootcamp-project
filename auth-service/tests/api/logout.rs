@@ -1,6 +1,6 @@
 use reqwest::Url;
 
-use crate::helpers::{get_random_email, TestApp};
+use crate::helpers::{get_random_email, signup_and_login, TestApp};
 use auth_service::utils::constants::JWT_COOKIE_NAME;
 
 #[tokio::test]
@@ -28,23 +28,6 @@ async fn should_return_401_if_invalid_token() {
     let response = app.post_logout().await;
 
     assert_eq!(response.status().as_u16(), 401, "Should be 401");
-}
-
-async fn signup_and_login(app: &TestApp, email: &str, password: &str) {
-    let signup_body = serde_json::json!({
-        "email": &email,
-        "password": &password,
-        "requires2FA": false
-    });
-    let signup_response = app.post_signup(&signup_body).await;
-    assert_eq!(signup_response.status().as_u16(), 201);
-
-    let login_body = serde_json::json!({
-        "email": &email,
-        "password": &password,
-    });
-    let login_response = app.post_login(&login_body).await;
-    assert_eq!(login_response.status().as_u16(), 200);
 }
 
 #[tokio::test]

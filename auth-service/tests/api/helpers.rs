@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use reqwest::{cookie::Jar, Client};
+use serde_json::json;
 use tokio::sync::RwLock;
 
 use auth_service::{
@@ -28,7 +29,6 @@ impl TestApp {
         let _ = tokio::spawn(app.run());
 
         let cookie_jar = Arc::new(Jar::default());
-        //let http_client = Client::new();
 
         let http_client = Client::builder()
             .cookie_provider(cookie_jar.clone())
@@ -84,8 +84,39 @@ impl TestApp {
             .await
             .expect("Failed to execute logout request.")
     }
+
+    pub async fn post_verify_token<Body>(&self, body: &Body) -> reqwest::Response
+    where
+        Body: serde::Serialize,
+    {
+        self.http_client
+            .post(format!("{}/verify_token", &self.address))
+            .json(body)
+            .send()
+            .await
+            .expect("Failed to execute request.")
+    }
 }
 
 pub fn get_random_email() -> String {
     format!("{}@example.com", uuid::Uuid::new_v4())
+}
+
+pub async fn signup_and_login(app: &TestApp, email: &str, password: &str) -> reqwest::Response {
+    let signup_body = json!({
+        "email": &email,
+        "password": &password,
+        "requires2FA": false
+    });
+    let signup_response = app.post_signup(&signup_body).await;
+    assert_eq!(signup_response.status().as_u16(), 201);
+
+    let login_body = json!({
+        "email": &email,
+        "password": &password,
+    });
+    let login_response = app.post_login(&login_body).await;
+    assert_eq!(login_response.status().as_u16(), 200);
+
+    login_response
 }

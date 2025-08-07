@@ -1,5 +1,31 @@
-use axum::{http::StatusCode, response::IntoResponse};
+use axum::{http::StatusCode, response::IntoResponse, Json};
+use axum_extra::extract::CookieJar;
+use serde::Deserialize;
 
-pub async fn verify_token() -> impl IntoResponse {
-    StatusCode::OK.into_response()
+use crate::{
+    domain::AuthApiError,
+    utils::{auth::validate_token, constants::JWT_COOKIE_NAME},
+};
+
+pub async fn verify_token(
+    jar: CookieJar,
+    Json(request): Json<VerifyTokenRequest>,
+) -> Result<(CookieJar, impl IntoResponse), AuthApiError> {
+    validate_token(&request.token)
+        .await
+        .map_err(|_| AuthApiError::InvalidToken)?;
+
+    let cookie = jar.get(JWT_COOKIE_NAME).ok_or(AuthApiError::MissingToken)?;
+    let existing_token = cookie.value().to_owned();
+
+    if &request.token != existing_token.as_str() {
+        return Err(AuthApiError::Unauthorized);
+    }
+
+    Ok((jar, StatusCode::OK.into_response()))
+}
+
+#[derive(Deserialize)]
+pub struct VerifyTokenRequest {
+    token: String,
 }
