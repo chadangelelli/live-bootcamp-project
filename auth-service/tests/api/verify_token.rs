@@ -61,3 +61,16 @@ async fn should_return_401_if_invalid_token() {
         )
     }
 }
+
+#[tokio::test]
+async fn should_return_401_if_banned_token() {
+    /*
+    let app = TestApp::new().await;
+
+    let email = "bob@wherever.com";
+    let password = "B0bBles!";
+
+    let login_response = signup_and_login(&app, email, password);
+     */
+    todo!()
+}

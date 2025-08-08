@@ -5,12 +5,15 @@ use serde_json::json;
 use tokio::sync::RwLock;
 
 use auth_service::{
-    app_state::AppState, services::hashmap_user_store::HashmapUserStore, utils::constants::test,
+    app_state::{AppState, BannedTokenStoreType},
+    services::{hashmap_user_store::HashmapUserStore, HashSetBannedTokenStore},
+    utils::constants::test,
     Application,
 };
 
 pub struct TestApp {
     pub address: String,
+    pub banned_token_store: BannedTokenStoreType,
     pub cookie_jar: Arc<Jar>,
     pub http_client: Client,
 }
@@ -18,7 +21,8 @@ pub struct TestApp {
 impl TestApp {
     pub async fn new() -> Self {
         let user_store = Arc::new(RwLock::new(HashmapUserStore::default()));
-        let app_state = AppState::new(user_store);
+        let banned_token_store = Arc::new(RwLock::new(HashSetBannedTokenStore::default()));
+        let app_state = AppState::new(user_store, banned_token_store.clone());
         let app = Application::build(app_state, test::APP_ADDRESS)
             .await
             .expect("[auth_service::helpers] Failed to build app!");
@@ -39,6 +43,7 @@ impl TestApp {
             address,
             cookie_jar,
             http_client,
+            banned_token_store,
         }
     }
 

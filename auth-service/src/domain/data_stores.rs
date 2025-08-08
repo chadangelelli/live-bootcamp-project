@@ -1,6 +1,7 @@
-use crate::domain::{Email, Password};
+use thiserror::Error;
 
 use super::User;
+use crate::domain::{Email, Password};
 
 #[async_trait::async_trait]
 pub trait UserStore: Send + Sync {
@@ -16,5 +17,22 @@ pub enum UserStoreError {
     UserAlreadyExists,
     UserNotFound,
     InvalidCredentials,
+    UnexpectedError,
+}
+
+#[async_trait::async_trait]
+pub trait BannedTokenStore: Send + Sync {
+    async fn add_token(&mut self, token: String) -> Result<(), BannedTokenStoreError>;
+    async fn get_token(&self, token: &str) -> Option<&String>;
+    fn token_exists(&self, token: &str) -> bool;
+}
+
+#[derive(Debug, Error, PartialEq)]
+pub enum BannedTokenStoreError {
+    #[error("Invalid token")]
+    InvalidToken,
+    #[error("Token already exists in banned token store")]
+    TokenAlreadyExists,
+    #[error("Unexpected error. Please try again.")]
     UnexpectedError,
 }

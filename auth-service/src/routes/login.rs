@@ -10,7 +10,7 @@ use crate::{
 
 pub async fn login(
     State(state): State<AppState>,
-    jar: CookieJar, // New!
+    jar: CookieJar,
     Json(request): Json<LoginRequest>,
 ) -> Result<(CookieJar, impl IntoResponse), AuthApiError> {
     let email =
