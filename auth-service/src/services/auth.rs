@@ -3,9 +3,9 @@ use chrono::Utc;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Validation};
 use serde::{Deserialize, Serialize};
 
+use crate::app_state::BannedTokenStoreType;
 use crate::domain::email::Email;
-
-use super::constants::{JWT_COOKIE_NAME, JWT_SECRET};
+use crate::utils::constants::{JWT_COOKIE_NAME, JWT_SECRET};
 
 // Create cookie with a new JWT auth token
 pub fn generate_auth_cookie(email: &Email) -> Result<Cookie<'static>, GenerateTokenError> {
@@ -57,7 +57,19 @@ fn generate_auth_token(email: &Email) -> Result<String, GenerateTokenError> {
 }
 
 // Check if JWT auth token is valid by decoding it using the JWT secret
-pub async fn validate_token(token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
+pub async fn validate_token(
+    token: &str,
+    banned_token_store: BannedTokenStoreType,
+) -> Result<Claims, jsonwebtoken::errors::Error> {
+    {
+        let banned = banned_token_store.read().await;
+        if banned.token_exists(token) {
+            return Err(jsonwebtoken::errors::Error::from(
+                jsonwebtoken::errors::ErrorKind::InvalidToken,
+            ));
+        }
+    }
+
     decode::<Claims>(
         token,
         &DecodingKey::from_secret(JWT_SECRET.as_bytes()),
@@ -83,6 +95,12 @@ pub struct Claims {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
+    use tokio::sync::RwLock;
+
+    use crate::services::HashSetBannedTokenStore;
+
     use super::*;
 
     #[tokio::test]
@@ -118,7 +136,10 @@ mod tests {
     async fn test_validate_token_with_valid_token() {
         let email = Email::parse("test@example.com".to_owned()).unwrap();
         let token = generate_auth_token(&email).unwrap();
-        let result = validate_token(&token).await.unwrap();
+
+        let banned_token_store = Arc::new(RwLock::new(HashSetBannedTokenStore::default()));
+
+        let result = validate_token(&token, banned_token_store).await.unwrap();
         assert_eq!(result.sub, "test@example.com");
 
         let exp = Utc::now()
@@ -131,8 +152,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_validate_token_with_invalid_token() {
+        let banned_token_store = Arc::new(RwLock::new(HashSetBannedTokenStore::default()));
+
         let token = "invalid_token".to_owned();
-        let result = validate_token(&token).await;
+        let result = validate_token(&token, banned_token_store).await;
         assert!(result.is_err());
     }
 }

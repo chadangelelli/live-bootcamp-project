@@ -64,13 +64,17 @@ async fn should_return_401_if_invalid_token() {
 
 #[tokio::test]
 async fn should_return_401_if_banned_token() {
-    /*
     let app = TestApp::new().await;
 
-    let email = "bob@wherever.com";
-    let password = "B0bBles!";
+    let test_cases = ["", "invalid"];
 
-    let login_response = signup_and_login(&app, email, password);
-     */
-    todo!()
+    for test_case in test_cases {
+        let body = json!({
+            "token": test_case,
+        });
+
+        let response = app.post_verify_token(&body).await;
+
+        assert_eq!(response.status().as_u16(), 401);
+    }
 }
