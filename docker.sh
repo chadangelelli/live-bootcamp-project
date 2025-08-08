@@ -1,4 +1,4 @@
-#!/usr/bin/env bash 
+#!/bin/bash
 
 # Define the location of the .env file (change if needed)
 ENV_FILE="./auth-service/.env"
