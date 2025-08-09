@@ -81,7 +81,6 @@ impl Application {
         let allowed_origins = [
             "http://localhost:8000".parse()?,
             "http://167.71.20.198:8000".parse()?,
-            "http://167.71.20.198".parse()?,
         ];
 
         let cors = CorsLayer::new()
