@@ -3,7 +3,7 @@ use axum_extra::extract::CookieJar;
 use serde::Deserialize;
 
 use crate::{
-    app_state::AppState, domain::AuthApiError, services::auth::validate_token,
+    app_state::AppState, domain::AuthApiError, utils::auth::validate_token,
     utils::constants::JWT_COOKIE_NAME,
 };
 

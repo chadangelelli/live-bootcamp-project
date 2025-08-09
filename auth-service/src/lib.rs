@@ -95,8 +95,8 @@ impl Application {
             .route("/verify_2fa", post(verify_2fa))
             .route("/verify_token", post(verify_token))
             .nest_service("/", ServeDir::new("assets"))
-            .with_state(app_state)
-            .layer(cors);
+            .layer(cors)
+            .with_state(app_state);
 
         let listener = tokio::net::TcpListener::bind(address).await?;
         let address = listener.local_addr()?.to_string();

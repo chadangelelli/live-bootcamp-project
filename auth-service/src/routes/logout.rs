@@ -1,7 +1,7 @@
 use axum::{extract::State, http::StatusCode, response::IntoResponse};
 use axum_extra::extract::{cookie::Cookie, CookieJar};
 
-use crate::services::auth::validate_token;
+use crate::utils::auth::validate_token;
 use crate::utils::constants::JWT_COOKIE_NAME;
 use crate::{app_state::AppState, domain::AuthApiError};
 
