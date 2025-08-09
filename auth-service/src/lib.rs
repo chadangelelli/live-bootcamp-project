@@ -92,8 +92,8 @@ impl Application {
             .route("/login", post(login))
             .route("/logout", post(logout))
             .route("/signup", post(signup))
-            .route("/verify_2fa", post(verify_2fa))
-            .route("/verify_token", post(verify_token))
+            .route("/verify-2fa", post(verify_2fa))
+            .route("/verify-token", post(verify_token))
             .nest_service("/", ServeDir::new("assets"))
             .with_state(app_state)
             .layer(cors);

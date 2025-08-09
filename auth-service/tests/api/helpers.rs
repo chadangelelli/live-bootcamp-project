@@ -95,7 +95,7 @@ impl TestApp {
         Body: serde::Serialize,
     {
         self.http_client
-            .post(format!("{}/verify_token", &self.address))
+            .post(format!("{}/verify-token", &self.address))
             .json(body)
             .send()
             .await

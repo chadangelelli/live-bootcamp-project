@@ -66,25 +66,19 @@ async fn protected(jar: CookieJar) -> impl IntoResponse {
     let response = match api_client.post(&url).json(&verify_token_body).send().await {
         Ok(response) => response,
         Err(_) => {
-            println!("Error is here [1]");
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };
 
     match response.status() {
         reqwest::StatusCode::UNAUTHORIZED | reqwest::StatusCode::BAD_REQUEST => {
-            println!("Error is here [2]");
             StatusCode::UNAUTHORIZED.into_response()
         }
         reqwest::StatusCode::OK => Json(ProtectedRouteResponse {
             img_url: "https://i.ibb.co/YP90j68/Light-Live-Bootcamp-Certificate.png".to_owned(),
         })
         .into_response(),
-        //TODO: or here
-        _ => {
-            println!("Error is here [3]");
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
-        }
+        _ => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     }
 }
 
