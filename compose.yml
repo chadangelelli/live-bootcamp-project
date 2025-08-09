@@ -15,4 +15,4 @@ services:
     ports:
       - "3000:3000"
     environment:
-      JWT_SECRET: ${JWT_SECRET}=value
+      JWT_SECRET: ${JWT_SECRET}
