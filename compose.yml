@@ -12,6 +12,7 @@ services:
   auth-service:
     image: xnomadmarsx/auth-service
     restart: "always"
-    env_file: "./auth-service/.env"
     ports:
       - "3000:3000"
+    environment:
+      JWT_SECRET: ${JWT_SECRET}=value
