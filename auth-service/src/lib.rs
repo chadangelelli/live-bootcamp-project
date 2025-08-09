@@ -81,6 +81,7 @@ impl Application {
         let allowed_origins = [
             "http://localhost:8000".parse()?,
             "http://167.71.20.198:8000".parse()?,
+            "http://167.71.20.198".parse()?,
         ];
 
         let cors = CorsLayer::new()
@@ -95,8 +96,8 @@ impl Application {
             .route("/verify_2fa", post(verify_2fa))
             .route("/verify_token", post(verify_token))
             .nest_service("/", ServeDir::new("assets"))
-            .layer(cors)
-            .with_state(app_state);
+            .with_state(app_state)
+            .layer(cors);
 
         let listener = tokio::net::TcpListener::bind(address).await?;
         let address = listener.local_addr()?.to_string();
