@@ -41,19 +41,29 @@ async fn handle_2fa(
     jar: CookieJar,
 ) -> Result<(CookieJar, (StatusCode, Json<LoginResponse>)), AuthApiError> {
     let login_attempt_id = LoginAttemptId::generate_random();
-    let login_attempt_id_str = login_attempt_id.as_ref().to_string();
     let two_fa_code = TwoFACode::generate_random();
 
     {
-        let mut lock = state.two_fa_code_store.write().await;
-        lock.add_code(email.to_owned(), login_attempt_id, two_fa_code)
+        let mut two_fa_code_store = state.two_fa_code_store.write().await;
+        two_fa_code_store
+            .add_code(email.clone(), login_attempt_id.clone(), two_fa_code.clone())
             .await
             .map_err(|_| AuthApiError::UnexpectedError)?;
     }
 
+    // TODO: send 2FA code via the email client. Return `AuthAPIError::UnexpectedError` if the operation fails.
+    let subject = "Your Let's Get Rusty 2FA Code";
+    let content = format!("Your 2FA code is: {}", &two_fa_code.as_ref());
+
+    state
+        .email_client
+        .send_email(email, subject, &content)
+        .await
+        .map_err(|_| AuthApiError::UnexpectedError)?;
+
     let response = Json(LoginResponse::TwoFactorAuth(TwoFactorAuthResponse {
         message: "2FA required".to_string(),
-        login_attempt_id: login_attempt_id_str,
+        login_attempt_id: login_attempt_id.as_ref().to_string(),
     }));
 
     Ok((jar, (StatusCode::PARTIAL_CONTENT, response)))
