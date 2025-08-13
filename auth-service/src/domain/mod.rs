@@ -1,4 +1,4 @@
-mod data_stores;
+pub mod data_stores;
 pub mod email;
 mod error;
 mod password;
