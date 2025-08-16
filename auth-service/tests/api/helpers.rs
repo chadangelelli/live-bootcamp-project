@@ -6,6 +6,7 @@ use tokio::sync::RwLock;
 
 use auth_service::{
     app_state::{AppState, BannedTokenStoreType, TwoFACodeStoreType},
+    domain::{LoginAttemptId, TwoFACode},
     services::{
         hashmap_user_store::HashmapUserStore, mock_email_client::MockEmailClient,
         HashSetBannedTokenStore, HashmapTwoFACodeStore,
@@ -115,27 +116,65 @@ impl TestApp {
             .await
             .expect("Failed to execute request.")
     }
+
+    pub async fn post_verify_2fa<Body>(&self, body: &Body) -> reqwest::Response
+    where
+        Body: serde::Serialize,
+    {
+        self.http_client
+            .post(format!("{}/verify-2fa", &self.address))
+            .json(body)
+            .send()
+            .await
+            .expect("Failed to execute request.")
+    }
 }
 
 pub fn get_random_email() -> String {
     format!("{}@example.com", uuid::Uuid::new_v4())
 }
 
-pub async fn signup_and_login(app: &TestApp, email: &str, password: &str) -> reqwest::Response {
+pub async fn signup(
+    app: &TestApp,
+    email: &str,
+    password: &str,
+    require_2fa: bool,
+) -> reqwest::Response {
     let signup_body = json!({
         "email": &email,
         "password": &password,
-        "requires2FA": false
+        "requires2FA": require_2fa,
     });
     let signup_response = app.post_signup(&signup_body).await;
     assert_eq!(signup_response.status().as_u16(), 201);
+    signup_response
+}
 
+pub async fn login(
+    app: &TestApp,
+    email: &str,
+    password: &str,
+    require_2fa: bool,
+) -> reqwest::Response {
     let login_body = json!({
         "email": &email,
         "password": &password,
     });
+    let success_status_code = if require_2fa { 206 } else { 200 };
     let login_response = app.post_login(&login_body).await;
-    assert_eq!(login_response.status().as_u16(), 200);
-
+    assert_eq!(login_response.status().as_u16(), success_status_code);
     login_response
+}
+
+pub async fn signup_and_login(app: &TestApp, email: &str, password: &str) -> reqwest::Response {
+    signup(app, email, password, false).await;
+    login(app, email, password, false).await
+}
+
+pub fn get_random_login_attempt_id() -> String {
+    format!("{}", LoginAttemptId::generate_random().as_ref())
+}
+
+pub fn get_random_two_fa_code() -> String {
+    format!("{}", TwoFACode::generate_random().as_ref())
 }

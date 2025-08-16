@@ -51,7 +51,6 @@ async fn handle_2fa(
             .map_err(|_| AuthApiError::UnexpectedError)?;
     }
 
-    // TODO: send 2FA code via the email client. Return `AuthAPIError::UnexpectedError` if the operation fails.
     let subject = "Your Let's Get Rusty 2FA Code";
     let content = format!("Your 2FA code is: {}", &two_fa_code.as_ref());
 
@@ -66,7 +65,10 @@ async fn handle_2fa(
         login_attempt_id: login_attempt_id.as_ref().to_string(),
     }));
 
-    Ok((jar, (StatusCode::PARTIAL_CONTENT, response)))
+    let auth_cookie = generate_auth_cookie(email).map_err(|_| AuthApiError::UnexpectedError)?;
+    let updated_jar = jar.add(auth_cookie);
+
+    Ok((updated_jar, (StatusCode::PARTIAL_CONTENT, response)))
 }
 
 async fn handle_no_2fa(

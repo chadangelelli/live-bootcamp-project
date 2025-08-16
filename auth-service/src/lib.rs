@@ -49,7 +49,7 @@ pub mod app_state {
     use std::sync::Arc;
     use tokio::sync::RwLock;
 
-    use crate::domain::{email_client, BannedTokenStore, EmailClient, TwoFACodeStore, UserStore};
+    use crate::domain::{BannedTokenStore, EmailClient, TwoFACodeStore, UserStore};
 
     pub type UserStoreType = Arc<RwLock<dyn UserStore + Send + Sync>>;
     pub type BannedTokenStoreType = Arc<RwLock<dyn BannedTokenStore + Send + Sync>>;
@@ -71,7 +71,7 @@ pub mod app_state {
             two_fa_code_store: TwoFACodeStoreType,
             email_client: EmailClientType,
         ) -> Self {
-            AppState {
+            Self {
                 user_store,
                 banned_token_store,
                 two_fa_code_store,
