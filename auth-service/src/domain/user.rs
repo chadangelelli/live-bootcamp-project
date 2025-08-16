@@ -1,8 +1,11 @@
+use sqlx::{postgres::PgRow, FromRow, Row};
+
 use crate::domain::{Email, Password};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, sqlx::FromRow)]
 pub struct User {
     pub email: Email,
+    #[sqlx(rename = "password_hash")]
     password: Password,
     requires_2fa: bool,
 }
@@ -22,6 +25,16 @@ impl User {
 
     pub fn requires_2fa(&self) -> &bool {
         &self.requires_2fa
+    }
+}
+
+impl<'r> FromRow<'r, PgRow> for User {
+    fn from_row(row: &'r PgRow) -> Result<Self, sqlx::Error> {
+        Ok(User::new(
+            Email::parse(row.try_get("email")?).map_err(|_| sqlx::Error::RowNotFound)?,
+            Password::parse(row.try_get("password_hash")?).map_err(|_| sqlx::Error::RowNotFound)?,
+            row.try_get("requires_2fa")?,
+        ))
     }
 }
 

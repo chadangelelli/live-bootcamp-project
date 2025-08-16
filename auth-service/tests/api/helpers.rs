@@ -8,8 +8,10 @@ use auth_service::{
     app_state::{AppState, BannedTokenStoreType, TwoFACodeStoreType},
     domain::{LoginAttemptId, TwoFACode},
     services::{
-        hashmap_user_store::HashmapUserStore, mock_email_client::MockEmailClient,
-        HashSetBannedTokenStore, HashmapTwoFACodeStore,
+        data_stores::{
+            hashmap_user_store::HashmapUserStore, HashSetBannedTokenStore, HashmapTwoFACodeStore,
+        },
+        mock_email_client::MockEmailClient,
     },
     utils::constants::test,
     Application,

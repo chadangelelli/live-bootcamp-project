@@ -33,8 +33,11 @@ impl UserStore for HashmapUserStore {
         Ok(())
     }
 
-    async fn get_user(&self, email: &Email) -> Result<&User, UserStoreError> {
-        self.users.get(email).ok_or(UserStoreError::UserNotFound)
+    async fn get_user(&self, email: &Email) -> Result<User, UserStoreError> {
+        self.users
+            .get(email)
+            .cloned()
+            .ok_or(UserStoreError::UserNotFound)
     }
 
     /// NOTES: The following responses allow fishing and time-based attacks.
@@ -95,7 +98,7 @@ mod tests {
 
         let user1_result = user_store.get_user(&correct.email).await;
 
-        assert_eq!(user1_result, Ok(&correct));
+        assert_eq!(user1_result, Ok(&correct).cloned());
     }
 
     #[tokio::test]

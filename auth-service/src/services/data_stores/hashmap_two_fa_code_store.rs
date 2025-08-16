@@ -43,7 +43,7 @@ impl TwoFACodeStore for HashmapTwoFACodeStore {
 mod tests {
     use crate::{
         domain::{data_stores::TwoFACodeStore, Email, LoginAttemptId, TwoFACode},
-        services::HashmapTwoFACodeStore,
+        services::data_stores::HashmapTwoFACodeStore,
     };
 
     async fn add_code() -> (HashmapTwoFACodeStore, Email) {

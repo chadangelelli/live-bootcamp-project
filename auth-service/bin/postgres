@@ -1,0 +1,3 @@
+#!/usr/bin/env bash 
+
+docker run -e POSTGRES_PASSWORD=${LGR_POSTGRES_PASSWORD} -p 5432:5432 postgres:15.2-alpine
