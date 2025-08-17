@@ -30,7 +30,7 @@ async fn should_return_401_if_incorrect_credentials() {
     let app = TestApp::new().await;
 
     let invalid_creds = json!({
-        "email": "doesnt@exist.com",
+        "email": "doesnot@exist.com",
         "password": "PaSSW0rD!",
     });
 
@@ -39,7 +39,7 @@ async fn should_return_401_if_incorrect_credentials() {
     assert_eq!(
         response.status().as_u16(),
         401,
-        "Should be 401 for doest@exist.com"
+        "Should be 401 for doesnot@exist.com"
     );
 }
 

@@ -55,13 +55,11 @@ impl UserStore for HashmapUserStore {
     ) -> Result<(), UserStoreError> {
         let user = self.get_user(email).await?;
 
-        if let Some(stored_password) = user.password {
-            if stored_password == *password {
-                return Ok(());
-            }
+        if user.password.as_ref() == password.as_ref() {
+            Ok(())
+        } else {
+            Err(UserStoreError::InvalidCredentials)
         }
-
-        return Err(UserStoreError::InvalidCredentials);
     }
 
     async fn user_exists(&self, email: &Email) -> bool {
@@ -113,7 +111,7 @@ mod tests {
         let _ = user_store.add_user(user1).await;
 
         let valid_result = user_store
-            .validate_user(&correct.email, correct.password.as_ref().unwrap())
+            .validate_user(&correct.email, &correct.password)
             .await;
         assert_eq!(valid_result, Ok(()));
     }

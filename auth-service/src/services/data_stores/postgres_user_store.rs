@@ -30,7 +30,7 @@ impl From<UserRow> for User {
     fn from(row: UserRow) -> Self {
         User {
             email: Email::parse(row.email).unwrap(),
-            password: Some(Password::parse(row.password_hash, true).unwrap()),
+            password: Password::parse(row.password_hash, true).unwrap(),
             requires_2fa: row.requires_2fa,
         }
     }
@@ -40,10 +40,8 @@ impl<'r> FromRow<'r, PgRow> for User {
     fn from_row(row: &'r PgRow) -> Result<Self, sqlx::Error> {
         Ok(User {
             email: Email::parse(row.try_get("email")?).map_err(|_| sqlx::Error::RowNotFound)?,
-            password: Some(
-                Password::parse(row.try_get("password_hash")?, true)
-                    .map_err(|_| sqlx::Error::RowNotFound)?,
-            ),
+            password: Password::parse(row.try_get("password_hash")?, true)
+                .map_err(|_| sqlx::Error::RowNotFound)?,
             requires_2fa: row.try_get("requires_2fa")?,
         })
     }
@@ -56,12 +54,7 @@ impl UserStore for PostgresUserStore {
             return Err(UserStoreError::UserAlreadyExists);
         }
 
-        let password_str = user
-            .get_password()
-            .map_err(|_| UserStoreError::UnexpectedError)?
-            .as_ref();
-
-        let password_hash = compute_password_hash(password_str)
+        let password_hash = compute_password_hash(user.password.as_ref())
             .await
             .map_err(|_| UserStoreError::UnexpectedError)?;
 
@@ -113,15 +106,9 @@ impl UserStore for PostgresUserStore {
     ) -> Result<(), UserStoreError> {
         let user = self.get_user(email).await?;
 
-        verify_password_hash(
-            user.password
-                .as_ref()
-                .ok_or(UserStoreError::UnexpectedError)?
-                .as_ref(),
-            password.as_ref(),
-        )
-        .await
-        .map_err(|_| UserStoreError::UnexpectedError)?;
+        verify_password_hash(user.password.as_ref(), password.as_ref())
+            .await
+            .map_err(|_| UserStoreError::UnexpectedError)?;
 
         Ok(())
     }

@@ -19,7 +19,7 @@ async fn main() {
     let banned_token_store = Arc::new(RwLock::new(HashSetBannedTokenStore::default()));
     let two_fa_code_store = Arc::new(RwLock::new(HashmapTwoFACodeStore::default()));
     let email_client = Arc::new(auth_service::services::mock_email_client::MockEmailClient);
-    let pg_pool = configure_postgres().await;
+    let _pg_pool = configure_postgres().await;
 
     let app_state = AppState::new(
         user_store,

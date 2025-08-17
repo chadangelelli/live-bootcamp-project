@@ -1,13 +1,14 @@
-use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
+use axum::{debug_handler, extract::State, http::StatusCode, response::IntoResponse, Json};
 use axum_extra::extract::CookieJar;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     app_state::AppState,
-    domain::{AuthApiError, Email, LoginAttemptId, Password, TwoFACode},
+    domain::{AuthApiError, Email, LoginAttemptId, Password, TwoFACode, UserStoreError},
     utils::auth::generate_auth_cookie,
 };
 
+#[debug_handler]
 pub async fn login(
     State(state): State<AppState>,
     jar: CookieJar,
@@ -23,16 +24,16 @@ pub async fn login(
         let user_store = state.user_store.read().await;
         match user_store.get_user(&email).await {
             Ok(user) => user,
-            Err(_) => return Err(AuthApiError::UnexpectedError),
+            Err(err) => match err {
+                UserStoreError::UserNotFound => return Err(AuthApiError::IncorrectCredentials),
+                _ => {
+                    return Err(AuthApiError::UnexpectedError);
+                }
+            },
         }
     };
 
-    let stored_password = match user.get_password() {
-        Ok(password) => password,
-        Err(_) => return Err(AuthApiError::UnexpectedError),
-    };
-
-    if password.as_ref() != stored_password.as_ref() {
+    if password.as_ref() != user.password.as_ref() {
         return Err(AuthApiError::IncorrectCredentials);
     }
 

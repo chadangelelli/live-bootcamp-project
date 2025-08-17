@@ -1,3 +1,4 @@
+use lazy_static::lazy_static;
 use regex::Regex;
 use thiserror::Error;
 use uuid::Uuid;
@@ -93,7 +94,7 @@ impl AsRef<str> for LoginAttemptId {
 #[derive(Clone, Debug, PartialEq)]
 pub struct TwoFACode(String);
 
-lazy_static::lazy_static! {
+lazy_static! {
     static ref TWO_FA_CODE_REGEX: Regex = Regex::new(r"^\d{6}$").unwrap();
 }
 
