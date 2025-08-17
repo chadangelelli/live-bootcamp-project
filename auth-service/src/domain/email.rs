@@ -41,6 +41,12 @@ impl fmt::Display for Email {
     }
 }
 
+impl From<String> for Email {
+    fn from(s: String) -> Self {
+        Email::parse(s).unwrap()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{Email, EmailError};

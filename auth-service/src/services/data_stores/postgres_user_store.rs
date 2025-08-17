@@ -1,11 +1,9 @@
-use std::error::Error;
-
 use argon2::{
     password_hash::SaltString, Algorithm, Argon2, Params, PasswordHash, PasswordHasher,
     PasswordVerifier, Version,
 };
-
-use sqlx::PgPool;
+use sqlx::{postgres::PgRow, FromRow, PgPool, Row};
+use std::error::Error;
 
 use crate::domain::{
     data_stores::{UserStore, UserStoreError},
@@ -22,6 +20,35 @@ impl PostgresUserStore {
     }
 }
 
+pub struct UserRow {
+    email: String,
+    password_hash: String,
+    requires_2fa: bool,
+}
+
+impl From<UserRow> for User {
+    fn from(row: UserRow) -> Self {
+        User {
+            email: Email::parse(row.email).unwrap(),
+            password: Some(Password::parse(row.password_hash, true).unwrap()),
+            requires_2fa: row.requires_2fa,
+        }
+    }
+}
+
+impl<'r> FromRow<'r, PgRow> for User {
+    fn from_row(row: &'r PgRow) -> Result<Self, sqlx::Error> {
+        Ok(User {
+            email: Email::parse(row.try_get("email")?).map_err(|_| sqlx::Error::RowNotFound)?,
+            password: Some(
+                Password::parse(row.try_get("password_hash")?, true)
+                    .map_err(|_| sqlx::Error::RowNotFound)?,
+            ),
+            requires_2fa: row.try_get("requires_2fa")?,
+        })
+    }
+}
+
 #[async_trait::async_trait]
 impl UserStore for PostgresUserStore {
     async fn add_user(&mut self, user: User) -> Result<(), UserStoreError> {
@@ -29,32 +56,39 @@ impl UserStore for PostgresUserStore {
             return Err(UserStoreError::UserAlreadyExists);
         }
 
-        let password_hash = compute_password_hash(user.get_password().as_ref())
+        let password_str = user
+            .get_password()
+            .map_err(|_| UserStoreError::UnexpectedError)?
+            .as_ref();
+
+        let password_hash = compute_password_hash(password_str)
             .await
             .map_err(|_| UserStoreError::UnexpectedError)?;
 
-        // TODO: replace with query! macro
-        sqlx::query("INSERT INTO users (email, password_hash, requires_2fa) VALUES ($1, $2, $3)")
-            .bind(user.email.as_ref())
-            .bind(password_hash)
-            .bind(user.requires_2fa())
-            .execute(&self.pool)
-            .await
-            .map_err(|_| UserStoreError::UnexpectedError)?;
+        sqlx::query!(
+            "INSERT INTO users (email, password_hash, requires_2fa) VALUES ($1, $2, $3)",
+            user.email.as_ref(),
+            password_hash,
+            user.requires_2fa
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|_| UserStoreError::UnexpectedError)?;
 
         Ok(())
     }
 
     async fn get_user(&self, email: &Email) -> Result<User, UserStoreError> {
-        // TODO: Use query_as! macro for typed queries
-        let user =
-            sqlx::query_as("SELECT email, password_hash, requires_2fa FROM users WHERE email = $1")
-                .bind(email.as_ref())
-                .fetch_one(&self.pool)
-                .await
-                .map_err(|_| UserStoreError::UnexpectedError)?;
+        let user_row = sqlx::query_as!(
+            UserRow,
+            "SELECT email, password_hash, requires_2fa FROM users WHERE email = $1",
+            email.as_ref()
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|_| UserStoreError::UnexpectedError)?;
 
-        Ok(user)
+        Ok(User::from(user_row))
     }
 
     async fn user_exists(&self, email: &Email) -> bool {
@@ -79,9 +113,15 @@ impl UserStore for PostgresUserStore {
     ) -> Result<(), UserStoreError> {
         let user = self.get_user(email).await?;
 
-        verify_password_hash(&user.get_password().as_ref(), password.as_ref())
-            .await
-            .map_err(|_| UserStoreError::UnexpectedError)?;
+        verify_password_hash(
+            user.password
+                .as_ref()
+                .ok_or(UserStoreError::UnexpectedError)?
+                .as_ref(),
+            password.as_ref(),
+        )
+        .await
+        .map_err(|_| UserStoreError::UnexpectedError)?;
 
         Ok(())
     }

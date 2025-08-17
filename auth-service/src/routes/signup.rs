@@ -12,7 +12,7 @@ pub async fn signup(
 ) -> Result<impl IntoResponse, AuthApiError> {
     let email = Email::parse(request.email).map_err(|_| AuthApiError::InvalidCredentials)?;
     let password =
-        Password::parse(request.password).map_err(|_| AuthApiError::InvalidCredentials)?;
+        Password::parse(request.password, false).map_err(|_| AuthApiError::InvalidCredentials)?;
 
     let user = User::new(email, password, request.requires_2fa);
     let result = state.user_store.write().await.add_user(user).await;

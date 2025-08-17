@@ -16,20 +16,27 @@ pub async fn login(
     let email =
         Email::parse(request.email.clone()).map_err(|_| AuthApiError::InvalidCredentials)?;
 
-    let password =
-        Password::parse(request.password.clone()).map_err(|_| AuthApiError::InvalidCredentials)?;
+    let password = Password::parse(request.password.clone(), false)
+        .map_err(|_| AuthApiError::InvalidCredentials)?;
 
-    let user_store_guard = state.user_store.read().await;
-    let user = match user_store_guard.get_user(&email).await {
-        Ok(user) => user,
-        Err(_) => return Err(AuthApiError::IncorrectCredentials),
+    let user = {
+        let user_store = state.user_store.read().await;
+        match user_store.get_user(&email).await {
+            Ok(user) => user,
+            Err(_) => return Err(AuthApiError::UnexpectedError),
+        }
     };
 
-    if password.as_ref() != user.get_password().as_ref() {
+    let stored_password = match user.get_password() {
+        Ok(password) => password,
+        Err(_) => return Err(AuthApiError::UnexpectedError),
+    };
+
+    if password.as_ref() != stored_password.as_ref() {
         return Err(AuthApiError::IncorrectCredentials);
     }
 
-    match user.requires_2fa() {
+    match user.requires_2fa {
         true => handle_2fa(&email, &state, jar).await,
         false => handle_no_2fa(&user.email, jar).await,
     }

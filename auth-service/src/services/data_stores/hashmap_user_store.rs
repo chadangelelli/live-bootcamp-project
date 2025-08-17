@@ -54,11 +54,14 @@ impl UserStore for HashmapUserStore {
         password: &Password,
     ) -> Result<(), UserStoreError> {
         let user = self.get_user(email).await?;
-        if user.get_password() == password {
-            Ok(())
-        } else {
-            Err(UserStoreError::InvalidCredentials)
+
+        if let Some(stored_password) = user.password {
+            if stored_password == *password {
+                return Ok(());
+            }
         }
+
+        return Err(UserStoreError::InvalidCredentials);
     }
 
     async fn user_exists(&self, email: &Email) -> bool {
@@ -73,7 +76,7 @@ mod tests {
     fn user1() -> User {
         User::new(
             Email::parse("test@example.com".to_string()).unwrap(),
-            Password::parse("PaSSword@123!".to_string()).unwrap(),
+            Password::parse("PaSSword@123!".to_string(), false).unwrap(),
             true,
         )
     }
@@ -98,7 +101,7 @@ mod tests {
 
         let user1_result = user_store.get_user(&correct.email).await;
 
-        assert_eq!(user1_result, Ok(&correct).cloned());
+        assert_eq!(user1_result, Ok(correct));
     }
 
     #[tokio::test]
@@ -110,7 +113,7 @@ mod tests {
         let _ = user_store.add_user(user1).await;
 
         let valid_result = user_store
-            .validate_user(&correct.email, &correct.get_password())
+            .validate_user(&correct.email, correct.password.as_ref().unwrap())
             .await;
         assert_eq!(valid_result, Ok(()));
     }

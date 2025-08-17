@@ -1,5 +1,6 @@
 use core::fmt;
-
+use lazy_static::lazy_static;
+use regex::Regex;
 use thiserror::Error;
 
 #[derive(Debug, Error, PartialEq)]
@@ -16,14 +17,29 @@ pub enum PasswordError {
     MissingUppercase,
     #[error("Password must contain at least one special character")]
     MissingSpecialCharacter,
+    #[error("Hash passed without allow_hash flag")]
+    HashWithoutAllowFlag,
+}
+
+lazy_static! {
+    pub static ref ARGON2_REGEX: Regex =
+        Regex::new(r"^\$argon2i\$v=19\$m=65536,t=4,p=1\$.{22}\$.{43}$").unwrap();
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Password(String);
 
 impl Password {
-    pub fn parse(password: String) -> Result<Self, PasswordError> {
+    pub fn parse(password: String, allow_hash: bool) -> Result<Self, PasswordError> {
         let password = password.trim().to_string();
+
+        if ARGON2_REGEX.is_match(&password) {
+            if allow_hash {
+                return Ok(Password(password));
+            } else {
+                return Err(PasswordError::HashWithoutAllowFlag);
+            }
+        }
 
         if password.is_empty() {
             Err(PasswordError::EmptyPassword)
@@ -64,7 +80,7 @@ mod tests {
         let valid_passwords = vec!["Valid1@Password", "AnotherValid2#Password"];
 
         for password in valid_passwords {
-            let result = Password::parse(password.to_string());
+            let result = Password::parse(password.to_string(), false);
             assert!(
                 result.is_ok(),
                 "Failed to parse valid password: {}",
@@ -85,7 +101,7 @@ mod tests {
         ];
 
         for password in invalid_passwords {
-            let result = Password::parse(password.to_string());
+            let result = Password::parse(password.to_string(), false);
             assert!(
                 result.is_err(),
                 "Expected error for invalid password: {}",
