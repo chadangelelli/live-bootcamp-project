@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     app_state::AppState,
-    domain::{AuthApiError, Email, LoginAttemptId, Password, TwoFACode, UserStoreError},
+    domain::{AuthApiError, Email, LoginAttemptId, Password, TwoFACode, User, UserStoreError},
     utils::auth::generate_auth_cookie,
 };
 
@@ -22,20 +22,13 @@ pub async fn login(
 
     let user = {
         let user_store = state.user_store.read().await;
-        match user_store.get_user(&email).await {
+        match user_store.validate_user(&email, &password).await {
             Ok(user) => user,
-            Err(err) => match err {
-                UserStoreError::UserNotFound => return Err(AuthApiError::IncorrectCredentials),
-                _ => {
-                    return Err(AuthApiError::UnexpectedError);
-                }
-            },
+            Err(_) => {
+                return Err(AuthApiError::IncorrectCredentials);
+            }
         }
     };
-
-    if password.as_ref() != user.password.as_ref() {
-        return Err(AuthApiError::IncorrectCredentials);
-    }
 
     match user.requires_2fa {
         true => handle_2fa(&email, &state, jar).await,

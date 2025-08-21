@@ -1,6 +1,6 @@
 use argon2::{
-    password_hash::SaltString, Algorithm, Argon2, Params, PasswordHash, PasswordHasher,
-    PasswordVerifier, Version,
+    password_hash::{self, SaltString},
+    Algorithm, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier, Version,
 };
 use sqlx::{postgres::PgRow, FromRow, PgPool, Row};
 use std::error::Error;
@@ -58,6 +58,15 @@ impl UserStore for PostgresUserStore {
             .await
             .map_err(|_| UserStoreError::UnexpectedError)?;
 
+        // TODO: replace with query! macro
+        sqlx::query("INSERT INTO users (email, password_hash, requires_2fa) VALUES ($1, $2, $3)")
+            .bind(user.email.as_ref())
+            .bind(password_hash)
+            .bind(user.requires_2fa)
+            .execute(&self.pool)
+            .await
+            .map_err(|_| UserStoreError::UnexpectedError)?;
+        /*
         sqlx::query!(
             "INSERT INTO users (email, password_hash, requires_2fa) VALUES ($1, $2, $3)",
             user.email.as_ref(),
@@ -67,11 +76,21 @@ impl UserStore for PostgresUserStore {
         .execute(&self.pool)
         .await
         .map_err(|_| UserStoreError::UnexpectedError)?;
+             */
 
         Ok(())
     }
 
     async fn get_user(&self, email: &Email) -> Result<User, UserStoreError> {
+        // TODO: replace with UserRow and query_as! macro
+        let user: User =
+            sqlx::query_as("SELECT email, password_hash, requires_2fa FROM users WHERE email = $1")
+                .bind(email.as_ref())
+                .fetch_one(&self.pool)
+                .await
+                .map_err(|_| UserStoreError::UserNotFound)?;
+
+        /*
         let user_row = sqlx::query_as!(
             UserRow,
             "SELECT email, password_hash, requires_2fa FROM users WHERE email = $1",
@@ -82,6 +101,8 @@ impl UserStore for PostgresUserStore {
         .map_err(|_| UserStoreError::UnexpectedError)?;
 
         Ok(User::from(user_row))
+         */
+        Ok(user)
     }
 
     async fn user_exists(&self, email: &Email) -> bool {
@@ -103,14 +124,14 @@ impl UserStore for PostgresUserStore {
         &self,
         email: &Email,
         password: &Password,
-    ) -> Result<(), UserStoreError> {
+    ) -> Result<User, UserStoreError> {
         let user = self.get_user(email).await?;
 
         verify_password_hash(user.password.as_ref(), password.as_ref())
             .await
             .map_err(|_| UserStoreError::UnexpectedError)?;
 
-        Ok(())
+        Ok(user)
     }
 }
 
