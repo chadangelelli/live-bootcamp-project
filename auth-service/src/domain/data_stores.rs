@@ -30,7 +30,7 @@ pub enum UserStoreError {
 pub trait BannedTokenStore: Send + Sync {
     async fn add_token(&mut self, token: String) -> Result<(), BannedTokenStoreError>;
     async fn get_token(&self, token: &str) -> Option<&String>;
-    fn token_exists(&self, token: &str) -> bool;
+    async fn token_exists(&self, token: &str) -> bool;
 }
 
 #[derive(Debug, Error, PartialEq)]

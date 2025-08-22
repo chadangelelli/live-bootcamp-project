@@ -4,13 +4,12 @@ use tokio::sync::RwLock;
 
 use auth_service::{
     app_state::AppState,
-    get_postgres_pool,
+    get_postgres_pool, get_redis_client,
     services::data_stores::{
-        hashmap_two_fa_code_store::HashmapTwoFACodeStore,
-        hashset_banned_token_store::HashSetBannedTokenStore,
-        postgres_user_store::PostgresUserStore,
+        hashmap_two_fa_code_store::HashmapTwoFACodeStore, postgres_user_store::PostgresUserStore,
+        redis_banned_token_store::RedisBannedTokenStore,
     },
-    utils::{constants::prod, constants::DATABASE_URL},
+    utils::constants::{prod, DATABASE_URL, REDIS_HOSTNAME},
     Application,
 };
 
@@ -19,7 +18,8 @@ async fn main() {
     let pg_pool = configure_postgres().await;
     let user_store = Arc::new(RwLock::new(PostgresUserStore::new(pg_pool)));
 
-    let banned_token_store = Arc::new(RwLock::new(HashSetBannedTokenStore::default()));
+    let redis_conn = Arc::new(RwLock::new(configure_redis()));
+    let banned_token_store = Arc::new(RwLock::new(RedisBannedTokenStore::new(redis_conn)));
 
     let two_fa_code_store = Arc::new(RwLock::new(HashmapTwoFACodeStore::default()));
 
@@ -52,4 +52,11 @@ async fn configure_postgres() -> PgPool {
         .expect("Failed to run migrations");
 
     pg_pool
+}
+
+fn configure_redis() -> redis::Connection {
+    get_redis_client(REDIS_HOSTNAME.to_owned())
+        .expect("Failed to get Redis client")
+        .get_connection()
+        .expect("Failed to get Redis connection")
 }

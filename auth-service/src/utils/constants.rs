@@ -1,3 +1,4 @@
+use core::panic;
 use dotenvy::dotenv;
 use lazy_static::lazy_static;
 use std::{collections::HashMap, env as std_env};
@@ -12,6 +13,10 @@ lazy_static! {
         .get(env::JWT_SECRET_ENV_VAR)
         .cloned()
         .unwrap_or_else(|| { panic!("JWT_SECRET must be set.") });
+    pub static ref REDIS_HOSTNAME: String = ENV
+        .get(env::REDIS_HOSTNAME_ENV_VAR)
+        .cloned()
+        .unwrap_or(DEFAULT_REDIS_HOSTNAME.to_string());
 }
 
 fn init_env() -> HashMap<String, String> {
@@ -22,9 +27,11 @@ fn init_env() -> HashMap<String, String> {
 pub mod env {
     pub const DATABASE_URL_ENV_VAR: &str = "DATABASE_URL";
     pub const JWT_SECRET_ENV_VAR: &str = "JWT_SECRET";
+    pub const REDIS_HOSTNAME_ENV_VAR: &str = "REDIS_HOSTNAME";
 }
 
 pub const JWT_COOKIE_NAME: &str = "jwt";
+pub const DEFAULT_REDIS_HOSTNAME: &str = "127.0.0.1";
 
 pub mod prod {
     pub const APP_ADDRESS: &str = "0.0.0.0:3000";

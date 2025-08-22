@@ -10,7 +10,7 @@ pub struct HashSetBannedTokenStore {
 #[async_trait::async_trait]
 impl BannedTokenStore for HashSetBannedTokenStore {
     async fn add_token(&mut self, token: String) -> Result<(), BannedTokenStoreError> {
-        if self.token_exists(&token) {
+        if self.token_exists(&token).await {
             Err(BannedTokenStoreError::TokenAlreadyExists)
         } else {
             self.tokens.insert(token);
@@ -22,7 +22,7 @@ impl BannedTokenStore for HashSetBannedTokenStore {
         self.tokens.get(token)
     }
 
-    fn token_exists(&self, token: &str) -> bool {
+    async fn token_exists(&self, token: &str) -> bool {
         self.tokens.contains(token)
     }
 }
@@ -53,7 +53,7 @@ mod tests {
     async fn test_token_exists() {
         let mut store = HashSetBannedTokenStore::default();
         let add_result = store.add_token(FAKE_TOKEN.to_string()).await;
-        let exists_result = store.token_exists(FAKE_TOKEN);
+        let exists_result = store.token_exists(FAKE_TOKEN).await;
         assert_eq!(add_result, Ok(()));
         assert!(exists_result)
     }

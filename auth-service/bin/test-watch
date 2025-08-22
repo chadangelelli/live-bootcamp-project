@@ -1,3 +1,5 @@
 #!/usr/bin/env bash 
 
-cargo watch -x 'nextest run'
+cargo watch -x "nextest run $@"
+
+# Example: cargo watch -x 'nextest run --no-capture should_return_200_if_valid_jwt_cookie'
