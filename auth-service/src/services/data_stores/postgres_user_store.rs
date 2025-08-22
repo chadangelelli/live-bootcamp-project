@@ -1,6 +1,6 @@
 use argon2::{
-    password_hash::{self, SaltString},
-    Algorithm, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier, Version,
+    password_hash::SaltString, Algorithm, Argon2, Params, PasswordHash, PasswordHasher,
+    PasswordVerifier, Version,
 };
 use sqlx::{postgres::PgRow, FromRow, PgPool, Row};
 use std::error::Error;
@@ -58,15 +58,6 @@ impl UserStore for PostgresUserStore {
             .await
             .map_err(|_| UserStoreError::UnexpectedError)?;
 
-        // TODO: replace with query! macro
-        sqlx::query("INSERT INTO users (email, password_hash, requires_2fa) VALUES ($1, $2, $3)")
-            .bind(user.email.as_ref())
-            .bind(password_hash)
-            .bind(user.requires_2fa)
-            .execute(&self.pool)
-            .await
-            .map_err(|_| UserStoreError::UnexpectedError)?;
-        /*
         sqlx::query!(
             "INSERT INTO users (email, password_hash, requires_2fa) VALUES ($1, $2, $3)",
             user.email.as_ref(),
@@ -76,21 +67,11 @@ impl UserStore for PostgresUserStore {
         .execute(&self.pool)
         .await
         .map_err(|_| UserStoreError::UnexpectedError)?;
-             */
 
         Ok(())
     }
 
     async fn get_user(&self, email: &Email) -> Result<User, UserStoreError> {
-        // TODO: replace with UserRow and query_as! macro
-        let user: User =
-            sqlx::query_as("SELECT email, password_hash, requires_2fa FROM users WHERE email = $1")
-                .bind(email.as_ref())
-                .fetch_one(&self.pool)
-                .await
-                .map_err(|_| UserStoreError::UserNotFound)?;
-
-        /*
         let user_row = sqlx::query_as!(
             UserRow,
             "SELECT email, password_hash, requires_2fa FROM users WHERE email = $1",
@@ -101,12 +82,9 @@ impl UserStore for PostgresUserStore {
         .map_err(|_| UserStoreError::UnexpectedError)?;
 
         Ok(User::from(user_row))
-         */
-        Ok(user)
     }
 
     async fn user_exists(&self, email: &Email) -> bool {
-        // TODO: replace with query! macro
         let row = sqlx::query("SELECT 1 FROM users WHERE email = $1")
             .bind(email.as_ref())
             .fetch_optional(&self.pool)
@@ -146,6 +124,10 @@ async fn verify_password_hash(
         .map_err(|e| e.into())
 }
 
+// TODO: Hashing is a CPU-intensive operation. To avoid blocking
+// other async tasks, update this function to perform hashing on a
+// separate thread pool using tokio::task::spawn_blocking. Note that you
+// will need to update the input parameters to be String types instead of &str
 async fn compute_password_hash(password: &str) -> Result<String, Box<dyn Error>> {
     let salt: SaltString = SaltString::generate(&mut rand::thread_rng());
     let password_hash = Argon2::new(
