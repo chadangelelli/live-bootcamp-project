@@ -15,7 +15,8 @@ use auth_service::{
     services::{
         data_stores::{
             postgres_user_store::PostgresUserStore,
-            redis_banned_token_store::RedisBannedTokenStore, HashmapTwoFACodeStore,
+            redis_banned_token_store::RedisBannedTokenStore,
+            redis_two_fa_code_store::RedisTwoFACodeStore,
         },
         mock_email_client::MockEmailClient,
     },
@@ -34,6 +35,7 @@ pub struct TestApp {
     pub banned_token_store: BannedTokenStoreType,
     pub two_fa_code_store: TwoFACodeStoreType,
     pub http_client: reqwest::Client,
+    pub clean_up_called: bool,
 }
 
 impl TestApp {
@@ -47,9 +49,11 @@ impl TestApp {
                 .get_connection()
                 .expect("Failed to get Redis connection"),
         ));
-        let banned_token_store = Arc::new(RwLock::new(RedisBannedTokenStore::new(redis_conn)));
 
-        let two_fa_code_store = Arc::new(RwLock::new(HashmapTwoFACodeStore::default()));
+        let banned_token_store =
+            Arc::new(RwLock::new(RedisBannedTokenStore::new(redis_conn.clone())));
+
+        let two_fa_code_store = Arc::new(RwLock::new(RedisTwoFACodeStore::new(redis_conn)));
 
         let email_client = Arc::new(MockEmailClient);
 
@@ -83,6 +87,7 @@ impl TestApp {
             http_client,
             banned_token_store,
             two_fa_code_store,
+            clean_up_called: false,
         }
     }
 
@@ -153,23 +158,22 @@ impl TestApp {
             .expect("Failed to execute request.")
     }
 
-    pub async fn clean_up(db_name: &str) -> Result<(), Box<dyn std::error::Error>> {
-        Ok(delete_database(db_name).await)
+    pub async fn clean_up(&mut self) {
+        if self.clean_up_called {
+            return;
+        }
+
+        delete_database(&self.db_name).await;
+
+        self.clean_up_called = true;
     }
 }
 
-// TODO: discuss this with Bogdan and/or Arnaud
 impl Drop for TestApp {
     fn drop(&mut self) {
-        let db_name = self.db_name.clone();
-        tokio::spawn(async move {
-            match TestApp::clean_up(&db_name).await {
-                Ok(_) => println!("Successfully cleaned up database: {}", db_name),
-                Err(err) => {
-                    panic!("Failed to clean up database: {}. Error: {}", db_name, err);
-                }
-            };
-        });
+        if !self.clean_up_called {
+            panic!("TestApp::clean_up was not called before dropping TestApp");
+        }
     }
 }
 
@@ -301,3 +305,31 @@ async fn delete_database(db_name: &str) {
         .await
         .expect("Failed to drop the database.");
 }
+
+// TODO: implement api_test macro
+/*
+#[proc_macro_attribute]
+pub fn api_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    // Parse the input function
+    let input_fn = parse_macro_input!(item as ItemFn);
+
+    // Get the function's name, inputs, output, and body
+    let fn_name = &input_fn.sig.ident;
+    let fn_inputs = &input_fn.sig.inputs;
+    let fn_output = &input_fn.sig.output;
+    let fn_body = &input_fn.block;
+
+    // Generate a new function that includes the setup and cleanup code
+    let expanded = quote! {
+        #[tokio::test]
+        async fn #fn_name(#fn_inputs) #fn_output {
+            let mut app = TestApp::new().await;
+            #fn_body
+            app.clean_up().await;
+        }
+    };
+
+    // Return the new function as a TokenStream
+    expanded.into()
+}
+ */

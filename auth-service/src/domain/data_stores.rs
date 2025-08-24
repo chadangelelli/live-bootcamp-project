@@ -1,3 +1,5 @@
+use core::fmt;
+
 use lazy_static::lazy_static;
 use regex::Regex;
 use thiserror::Error;
@@ -67,7 +69,7 @@ pub enum TwoFACodeStoreError {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct LoginAttemptId(String);
+pub struct LoginAttemptId(pub String);
 
 impl LoginAttemptId {
     pub fn parse(id: String) -> Result<Self, String> {
@@ -94,8 +96,14 @@ impl AsRef<str> for LoginAttemptId {
     }
 }
 
+impl fmt::Display for LoginAttemptId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "LoginAttemptId: {}", self.0)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
-pub struct TwoFACode(String);
+pub struct TwoFACode(pub String);
 
 lazy_static! {
     static ref TWO_FA_CODE_REGEX: Regex = Regex::new(r"^\d{6}$").unwrap();

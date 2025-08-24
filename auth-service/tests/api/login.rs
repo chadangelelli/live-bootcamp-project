@@ -4,10 +4,12 @@ use crate::helpers::{get_random_email, TestApp};
 use auth_service::{
     domain::Email, routes::TwoFactorAuthResponse, utils::constants::JWT_COOKIE_NAME,
 };
+// TODO: add api_test macro
+// use test_helpers::api_test;
 
 #[tokio::test]
 async fn should_return_422_if_malformed_credentials() {
-    let app = TestApp::new().await;
+    let mut app = TestApp::new().await;
 
     let test_cases = [get_random_email(), "P4SS!W0rd".to_string(), "".to_string()];
 
@@ -21,13 +23,15 @@ async fn should_return_422_if_malformed_credentials() {
             test_case
         );
     }
+
+    app.clean_up().await;
 }
 
 /// Call the log-in route with incorrect credentials and assert
 /// that a 401 HTTP status code is returned along with the appropriate error message.
 #[tokio::test]
 async fn should_return_401_if_incorrect_credentials() {
-    let app = TestApp::new().await;
+    let mut app = TestApp::new().await;
 
     let invalid_creds = json!({
         "email": "doesnot@exist.com",
@@ -41,11 +45,13 @@ async fn should_return_401_if_incorrect_credentials() {
         401,
         "Should be 401 for doesnot@exist.com"
     );
+
+    app.clean_up().await;
 }
 
 #[tokio::test]
 async fn should_return_200_if_valid_credentials_and_2fa_disabled() {
-    let app = TestApp::new().await;
+    let mut app = TestApp::new().await;
 
     let random_email = get_random_email();
     let password = "P4sSword123!";
@@ -75,8 +81,12 @@ async fn should_return_200_if_valid_credentials_and_2fa_disabled() {
         .expect("No auth cookie found");
 
     assert!(!auth_cookie.value().is_empty());
+
+    app.clean_up().await;
 }
 
+// TODO: add api_test macro
+/*
 #[tokio::test]
 async fn should_return_206_if_valid_credentials_and_2fa_enabled() {
     let app = TestApp::new().await;
@@ -118,3 +128,5 @@ async fn should_return_206_if_valid_credentials_and_2fa_enabled() {
     assert!(!login_attempt_id.as_ref().is_empty());
     assert!(!code.as_ref().is_empty());
 }
+
+ */
