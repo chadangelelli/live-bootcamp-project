@@ -1,22 +1,6 @@
-use core::fmt;
 use std::collections::HashMap;
 
 use crate::domain::{Email, Password, User, UserStore, UserStoreError};
-
-impl fmt::Display for UserStoreError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                UserStoreError::UserAlreadyExists => "[UserStoreError] User already exists",
-                UserStoreError::UserNotFound => "[UserStoreError] User not found",
-                UserStoreError::InvalidCredentials => "[UserStoreError] Invalid credentials",
-                UserStoreError::UnexpectedError => "[UserStoreError] An unexpected error occurred",
-            }
-        )
-    }
-}
 
 #[derive(Default, Debug)]
 pub struct HashmapUserStore {

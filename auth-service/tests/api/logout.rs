@@ -1,3 +1,4 @@
+/*
 use reqwest::Url;
 
 use crate::helpers::{get_random_email, signup_and_login, TestApp};
@@ -81,3 +82,4 @@ async fn should_return_400_if_logout_called_twice_in_a_row() {
 
     app.clean_up().await;
 }
+*/

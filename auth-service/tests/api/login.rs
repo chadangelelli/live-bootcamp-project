@@ -1,9 +1,8 @@
+/*
 use serde_json::json;
 
 use crate::helpers::{get_random_email, TestApp};
-use auth_service::{
-    domain::Email, routes::TwoFactorAuthResponse, utils::constants::JWT_COOKIE_NAME,
-};
+use auth_service::utils::constants::JWT_COOKIE_NAME;
 // TODO: add api_test macro
 // use test_helpers::api_test;
 
@@ -84,6 +83,7 @@ async fn should_return_200_if_valid_credentials_and_2fa_disabled() {
 
     app.clean_up().await;
 }
+ */
 
 // TODO: add api_test macro
 /*

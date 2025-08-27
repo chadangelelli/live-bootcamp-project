@@ -9,12 +9,18 @@ use auth_service::{
         postgres_user_store::PostgresUserStore, redis_banned_token_store::RedisBannedTokenStore,
         redis_two_fa_code_store::RedisTwoFACodeStore,
     },
-    utils::constants::{prod, DATABASE_URL, REDIS_HOSTNAME},
+    utils::{
+        constants::{prod, DATABASE_URL, REDIS_HOSTNAME},
+        tracing::init_tracing,
+    },
     Application,
 };
 
 #[tokio::main]
 async fn main() {
+    color_eyre::install().expect("Failed to install color_eyre");
+    init_tracing().expect("Failed to initialize tracing");
+
     let pg_pool = configure_postgres().await;
     let user_store = Arc::new(RwLock::new(PostgresUserStore::new(pg_pool)));
 

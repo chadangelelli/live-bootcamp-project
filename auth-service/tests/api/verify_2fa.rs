@@ -1,4 +1,4 @@
-use auth_service::domain::Email;
+/*use auth_service::domain::Email;
 use auth_service::utils::JWT_COOKIE_NAME;
 use serde_json::json;
 
@@ -209,3 +209,4 @@ async fn should_return_401_if_old_code() {
 
     app.clean_up().await;
 }
+*/

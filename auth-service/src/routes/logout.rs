@@ -1,4 +1,4 @@
-use axum::{extract::State, http::StatusCode, response::IntoResponse};
+/*use axum::{extract::State, http::StatusCode, response::IntoResponse};
 use axum_extra::extract::{cookie::Cookie, CookieJar};
 
 use crate::utils::auth::validate_token;
@@ -28,3 +28,4 @@ pub async fn logout(
 
     Ok((updated_jar, StatusCode::OK.into_response()))
 }
+*/
