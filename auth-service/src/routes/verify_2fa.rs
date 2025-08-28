@@ -1,4 +1,4 @@
-/*use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
+use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use axum_extra::extract::CookieJar;
 use serde::{Deserialize, Serialize};
 
@@ -8,6 +8,7 @@ use crate::{
     utils::auth::generate_auth_cookie,
 };
 
+#[tracing::instrument(name = "Verify 2FA", skip_all)]
 pub async fn verify_2fa(
     State(state): State<AppState>,
     jar: CookieJar,
@@ -22,14 +23,17 @@ pub async fn verify_2fa(
 
     let (correct_login_attempt_id, correct_code) = {
         let mut two_fa_code_store = state.two_fa_code_store.write().await;
+
         let correct_values = two_fa_code_store
             .get_code(&email)
             .await
             .map_err(|_| AuthApiError::IncorrectCredentials)?;
-        two_fa_code_store
+
+        let _: () = two_fa_code_store
             .remove_code(&email)
             .await
-            .map_err(|_| AuthApiError::UnexpectedError)?;
+            .map_err(|e| AuthApiError::UnexpectedError(e.into()))?;
+
         correct_values
     };
 
@@ -37,7 +41,7 @@ pub async fn verify_2fa(
         return Err(AuthApiError::IncorrectCredentials);
     }
 
-    let auth_cookie = generate_auth_cookie(&email).map_err(|_| AuthApiError::UnexpectedError)?;
+    let auth_cookie = generate_auth_cookie(&email).map_err(|e| AuthApiError::UnexpectedError(e))?;
     let updated_jar = jar.add(auth_cookie);
 
     Ok((updated_jar, (StatusCode::OK.into_response())))
@@ -51,4 +55,3 @@ pub struct Verify2FARequest {
     #[serde(rename = "2FACode")]
     pub code: String,
 }
-*/

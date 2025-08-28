@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 
+use color_eyre::eyre::{eyre, Result};
+
 use crate::domain::{BannedTokenStore, BannedTokenStoreError};
 
 #[derive(Default, Debug)]
@@ -9,9 +11,9 @@ pub struct HashSetBannedTokenStore {
 
 #[async_trait::async_trait]
 impl BannedTokenStore for HashSetBannedTokenStore {
-    async fn add_token(&mut self, token: String) -> Result<(), BannedTokenStoreError> {
+    async fn add_token(&mut self, token: String) -> Result<()> {
         if self.token_exists(&token).await {
-            Err(BannedTokenStoreError::TokenAlreadyExists)
+            Err(eyre!(BannedTokenStoreError::TokenAlreadyExists))
         } else {
             self.tokens.insert(token);
             Ok(())
@@ -37,7 +39,7 @@ mod tests {
     async fn test_add_token() {
         let mut store = HashSetBannedTokenStore::default();
         let result = store.add_token(FAKE_TOKEN.to_string()).await;
-        assert_eq!(result, Ok(()));
+        assert!(result.is_ok());
     }
 
     #[tokio::test]
@@ -45,7 +47,7 @@ mod tests {
         let mut store = HashSetBannedTokenStore::default();
         let add_result = store.add_token(FAKE_TOKEN.to_string()).await;
         let get_result = store.get_token(FAKE_TOKEN).await;
-        assert_eq!(add_result, Ok(()));
+        assert!(add_result.is_ok());
         assert_eq!(get_result, Some(&FAKE_TOKEN.to_string()))
     }
 
@@ -54,7 +56,7 @@ mod tests {
         let mut store = HashSetBannedTokenStore::default();
         let add_result = store.add_token(FAKE_TOKEN.to_string()).await;
         let exists_result = store.token_exists(FAKE_TOKEN).await;
-        assert_eq!(add_result, Ok(()));
+        assert!(add_result.is_ok());
         assert!(exists_result)
     }
 }

@@ -1,4 +1,3 @@
-/*
 use serde_json::json;
 
 use crate::helpers::{get_random_email, TestApp};
@@ -83,7 +82,6 @@ async fn should_return_200_if_valid_credentials_and_2fa_disabled() {
 
     app.clean_up().await;
 }
- */
 
 // TODO: add api_test macro
 /*

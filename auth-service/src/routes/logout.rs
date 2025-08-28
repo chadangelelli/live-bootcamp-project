@@ -1,4 +1,4 @@
-/*use axum::{extract::State, http::StatusCode, response::IntoResponse};
+use axum::{extract::State, http::StatusCode, response::IntoResponse};
 use axum_extra::extract::{cookie::Cookie, CookieJar};
 
 use crate::utils::auth::validate_token;
@@ -21,11 +21,10 @@ pub async fn logout(
         banned_token_store
             .add_token(token)
             .await
-            .map_err(|_| AuthApiError::UnexpectedError)?;
+            .map_err(|e| AuthApiError::UnexpectedError(e))?;
     }
 
     let updated_jar = jar.remove(Cookie::from(JWT_COOKIE_NAME));
 
     Ok((updated_jar, StatusCode::OK.into_response()))
 }
-*/

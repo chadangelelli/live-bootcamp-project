@@ -1,10 +1,11 @@
+use color_eyre::eyre::{eyre, Result};
 use core::fmt;
 
 use thiserror::Error;
 
 use email_address::EmailAddress;
 
-#[derive(Debug, Error, PartialEq)]
+#[derive(Debug, Error)]
 pub enum EmailError {
     #[error("Email cannot be empty")]
     EmptyEmail,
@@ -16,13 +17,13 @@ pub enum EmailError {
 pub struct Email(String);
 
 impl Email {
-    pub fn parse(email: String) -> Result<Self, EmailError> {
+    pub fn parse(email: String) -> Result<Self> {
         let email = email.trim().to_string();
 
         if email.is_empty() {
-            Err(EmailError::EmptyEmail)
+            Err(eyre!(EmailError::EmptyEmail))
         } else if !EmailAddress::is_valid(&email) {
-            Err(EmailError::InvalidFormat)
+            Err(eyre!(EmailError::InvalidFormat))
         } else {
             Ok(Email(email))
         }
@@ -49,7 +50,7 @@ impl From<String> for Email {
 
 #[cfg(test)]
 mod tests {
-    use super::{Email, EmailError};
+    use super::Email;
 
     #[tokio::test]
     async fn test_parse_valid_email() {
@@ -106,7 +107,6 @@ mod tests {
                 "Parsed invalid email as valid: {}",
                 email
             );
-            assert_eq!(parsed_email.unwrap_err(), EmailError::InvalidFormat);
         }
 
         let empty_email = Email::parse("".to_string());

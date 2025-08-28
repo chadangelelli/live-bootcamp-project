@@ -1,3 +1,4 @@
+use color_eyre::eyre::{eyre, Result};
 use core::fmt;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -30,29 +31,29 @@ lazy_static! {
 pub struct Password(String);
 
 impl Password {
-    pub fn parse(password: String, allow_hash: bool) -> Result<Self, PasswordError> {
+    pub fn parse(password: String, allow_hash: bool) -> Result<Self> {
         let password = password.trim().to_string();
 
         if ARGON2_REGEX.is_match(&password) {
             if allow_hash {
                 return Ok(Password(password));
             } else {
-                return Err(PasswordError::HashWithoutAllowFlag);
+                return Err(eyre!(PasswordError::HashWithoutAllowFlag));
             }
         }
 
         if password.is_empty() {
-            Err(PasswordError::EmptyPassword)
+            Err(eyre!(PasswordError::EmptyPassword))
         } else if password.chars().count() < 8 {
-            Err(PasswordError::TooShort)
+            Err(eyre!(PasswordError::TooShort))
         } else if !password.chars().any(|c| c.is_lowercase()) {
-            Err(PasswordError::MissingLowercase)
+            Err(eyre!(PasswordError::MissingLowercase))
         } else if !password.chars().any(|c| c.is_uppercase()) {
-            Err(PasswordError::MissingUppercase)
+            Err(eyre!(PasswordError::MissingUppercase))
         } else if !password.chars().any(|c| c.is_digit(10)) {
-            Err(PasswordError::MissingDigit)
+            Err(eyre!(PasswordError::MissingDigit))
         } else if !password.chars().any(|c| !c.is_alphanumeric()) {
-            Err(PasswordError::MissingSpecialCharacter)
+            Err(eyre!(PasswordError::MissingSpecialCharacter))
         } else {
             Ok(Password(password))
         }

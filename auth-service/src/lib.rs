@@ -19,13 +19,7 @@ pub mod services;
 pub mod utils;
 
 use domain::AuthApiError;
-use routes::{
-    // login,
-    // logout,
-    signup,
-    // verify_2fa,
-    verify_token,
-};
+use routes::{login, logout, signup, verify_2fa, verify_token};
 
 #[derive(Serialize, Deserialize)]
 pub struct ErrorResponse {
@@ -127,10 +121,10 @@ impl Application {
             .allow_origin(allowed_origins);
 
         let router = Router::new()
-            // .route("/login", post(login))
-            // .route("/logout", post(logout))
+            .route("/login", post(login))
+            .route("/logout", post(logout))
             .route("/signup", post(signup))
-            // .route("/verify-2fa", post(verify_2fa))
+            .route("/verify-2fa", post(verify_2fa))
             .route("/verify-token", post(verify_token))
             .nest_service("/", ServeDir::new("assets"))
             .with_state(app_state)
