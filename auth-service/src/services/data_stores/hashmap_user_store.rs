@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use secrecy::ExposeSecret;
+
 use crate::domain::{Email, Password, User, UserStore, UserStoreError};
 
 #[derive(Default, Debug)]
@@ -39,7 +41,7 @@ impl UserStore for HashmapUserStore {
     ) -> Result<User, UserStoreError> {
         let user = self.get_user(email).await?;
 
-        if user.password.as_ref() == password.as_ref() {
+        if user.password.as_ref().expose_secret() == password.as_ref().expose_secret() {
             Ok(user)
         } else {
             Err(UserStoreError::InvalidCredentials)
@@ -53,12 +55,14 @@ impl UserStore for HashmapUserStore {
 
 #[cfg(test)]
 mod tests {
+    use secrecy::Secret;
+
     use super::*;
 
     fn user1() -> User {
         User::new(
-            Email::parse("test@example.com".to_string()).unwrap(),
-            Password::parse("PaSSword@123!".to_string(), false).unwrap(),
+            Email::parse("test@example.com".to_string().into()).unwrap(),
+            Password::parse(Secret::new("PaSSword@123!".to_string()), false).unwrap(),
             true,
         )
     }

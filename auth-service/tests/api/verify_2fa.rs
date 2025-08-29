@@ -1,5 +1,6 @@
 use auth_service::domain::Email;
 use auth_service::utils::JWT_COOKIE_NAME;
+use secrecy::{ExposeSecret, Secret};
 use serde_json::json;
 
 use crate::helpers;
@@ -95,10 +96,10 @@ async fn should_return_401_if_incorrect_credentials() {
     let two_fa_code = {
         let two_fa_code_store = app.two_fa_code_store.read().await;
         let tuple = two_fa_code_store
-            .get_code(&Email::parse(email.clone()).unwrap())
+            .get_code(&Email::parse(Secret::new(email.clone())).unwrap())
             .await
             .expect("Failed to get 2FA code");
-        tuple.1.as_ref().to_string()
+        tuple.1.as_ref().expose_secret().clone()
     };
 
     let bad_email = get_random_email();
@@ -175,10 +176,10 @@ async fn should_return_401_if_old_code() {
     let two_fa_code = {
         let two_fa_code_store = app.two_fa_code_store.read().await;
         let tuple = two_fa_code_store
-            .get_code(&Email::parse(email.clone()).unwrap())
+            .get_code(&Email::parse(Secret::new(email.clone())).unwrap())
             .await
             .expect("Failed to get 2FA code");
-        tuple.1.as_ref().to_string()
+        tuple.1.as_ref().expose_secret().clone()
     };
 
     let payload = json!({

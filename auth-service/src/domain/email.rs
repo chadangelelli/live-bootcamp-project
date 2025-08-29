@@ -1,5 +1,7 @@
+use std::hash::Hash;
+
 use color_eyre::eyre::{eyre, Result};
-use core::fmt;
+use secrecy::{ExposeSecret, Secret};
 
 use thiserror::Error;
 
@@ -13,16 +15,30 @@ pub enum EmailError {
     InvalidFormat,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Email(String);
+#[derive(Clone, Debug)]
+pub struct Email(Secret<String>);
+
+impl PartialEq for Email {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.expose_secret() == other.0.expose_secret()
+    }
+}
+
+impl Hash for Email {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.expose_secret().hash(state);
+    }
+}
+
+impl Eq for Email {}
 
 impl Email {
-    pub fn parse(email: String) -> Result<Self> {
-        let email = email.trim().to_string();
+    pub fn parse(email: Secret<String>) -> Result<Self> {
+        let email_str = email.expose_secret().trim().to_string();
 
-        if email.is_empty() {
+        if email_str.is_empty() {
             Err(eyre!(EmailError::EmptyEmail))
-        } else if !EmailAddress::is_valid(&email) {
+        } else if !EmailAddress::is_valid(&email_str) {
             Err(eyre!(EmailError::InvalidFormat))
         } else {
             Ok(Email(email))
@@ -30,56 +46,47 @@ impl Email {
     }
 }
 
-impl AsRef<str> for Email {
-    fn as_ref(&self) -> &str {
+impl AsRef<Secret<String>> for Email {
+    fn as_ref(&self) -> &Secret<String> {
         &self.0
-    }
-}
-
-impl fmt::Display for Email {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
     }
 }
 
 impl From<String> for Email {
     fn from(s: String) -> Self {
-        Email::parse(s).unwrap()
+        Email::parse(Secret::new(s)).unwrap()
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use secrecy::{ExposeSecret, Secret};
+
     use super::Email;
 
     #[tokio::test]
     async fn test_parse_valid_email() {
         let valid_emails = vec![
-            "email@example.com",
-            "firstname.lastname@example.com",
-            "email@subdomain.example.com",
-            "firstname+lastname@example.com",
-            "email@123.123.123.123",
-            "email@[123.123.123.123]",
-            "1234567890@example.com",
-            "email@example-one.com",
-            "_______@example.com",
-            "email@example.name",
-            "email@example.museum",
-            "email@example.co.jp",
-            "firstname-lastname@example.com",
-            "Joe Smith <email@example.com>",
-            "あいうえお@example.com",
+            "email@example.com".to_string(),
+            "firstname.lastname@example.com".to_string(),
+            "email@subdomain.example.com".to_string(),
+            "firstname+lastname@example.com".to_string(),
+            "email@123.123.123.123".to_string(),
+            "email@[123.123.123.123]".to_string(),
+            "1234567890@example.com".to_string(),
+            "email@example-one.com".to_string(),
+            "_______@example.com".to_string(),
+            "email@example.name".to_string(),
+            "email@example.museum".to_string(),
+            "email@example.co.jp".to_string(),
+            "firstname-lastname@example.com".to_string(),
+            "Joe Smith <email@example.com>".to_string(),
+            "あいうえお@example.com".to_string(),
         ];
 
         for email in valid_emails {
-            let parsed_email = Email::parse(email.to_string());
-            assert!(
-                parsed_email.is_ok(),
-                "Failed to parse valid email: {}",
-                email
-            );
-            assert_eq!(parsed_email.unwrap().as_ref(), email);
+            let parsed_email = Email::parse(Secret::new(email.clone())).unwrap();
+            assert_eq!(parsed_email.as_ref().expose_secret(), &email);
         }
     }
 
@@ -101,7 +108,7 @@ mod tests {
         ];
 
         for email in invalid_emails {
-            let parsed_email = Email::parse(email.to_string());
+            let parsed_email = Email::parse(Secret::new(email.to_string()));
             assert!(
                 parsed_email.is_err(),
                 "Parsed invalid email as valid: {}",
@@ -109,7 +116,7 @@ mod tests {
             );
         }
 
-        let empty_email = Email::parse("".to_string());
+        let empty_email = Email::parse(Secret::new("".to_string()));
         assert!(empty_email.is_err());
         // assert_eq!(empty_email.unwrap_err(), EmailError::EmptyEmail);
     }

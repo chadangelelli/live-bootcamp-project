@@ -1,5 +1,6 @@
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use axum_extra::extract::CookieJar;
+use secrecy::{ExposeSecret, Secret};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -14,8 +15,8 @@ pub async fn login(
     jar: CookieJar,
     Json(request): Json<LoginRequest>,
 ) -> Result<(CookieJar, impl IntoResponse), AuthApiError> {
-    let email =
-        Email::parse(request.email.clone()).map_err(|_| AuthApiError::InvalidCredentials)?;
+    let email = Email::parse(Secret::new(request.email.clone()))
+        .map_err(|_| AuthApiError::InvalidCredentials)?;
 
     let password = Password::parse(request.password.clone(), false)
         .map_err(|_| AuthApiError::InvalidCredentials)?;
@@ -53,7 +54,10 @@ async fn handle_2fa(
     }
 
     let subject = "Your Let's Get Rusty 2FA Code";
-    let content = format!("Your 2FA code is: {}", &two_fa_code.as_ref());
+    let content = format!(
+        "Your 2FA code is: {}",
+        &two_fa_code.as_ref().expose_secret()
+    );
 
     if let Err(e) = state
         .email_client
@@ -65,7 +69,7 @@ async fn handle_2fa(
 
     let response = Json(LoginResponse::TwoFactorAuth(TwoFactorAuthResponse {
         message: "2FA required".to_string(),
-        login_attempt_id: login_attempt_id.as_ref().to_string(),
+        login_attempt_id: login_attempt_id.as_ref().expose_secret().to_string(),
     }));
 
     let auth_cookie = generate_auth_cookie(email).map_err(|e| AuthApiError::UnexpectedError(e))?;
@@ -91,7 +95,7 @@ async fn handle_no_2fa(
 #[derive(Deserialize)]
 pub struct LoginRequest {
     pub email: String,
-    pub password: String,
+    pub password: Secret<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]

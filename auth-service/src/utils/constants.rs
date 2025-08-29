@@ -1,17 +1,20 @@
 use core::panic;
 use dotenvy::dotenv;
 use lazy_static::lazy_static;
+use secrecy::Secret;
 use std::{collections::HashMap, env as std_env};
 
 lazy_static! {
     pub static ref ENV: HashMap<String, String> = init_env();
-    pub static ref DATABASE_URL: String = ENV
+    pub static ref DATABASE_URL: Secret<String> = ENV
         .get(env::DATABASE_URL_ENV_VAR)
         .cloned()
+        .map(Secret::new)
         .unwrap_or_else(|| { panic!("DATABASE_URL must be set.") });
-    pub static ref JWT_SECRET: String = ENV
+    pub static ref JWT_SECRET: Secret<String> = ENV
         .get(env::JWT_SECRET_ENV_VAR)
         .cloned()
+        .map(Secret::new)
         .unwrap_or_else(|| { panic!("JWT_SECRET must be set.") });
     pub static ref REDIS_HOSTNAME: String = ENV
         .get(env::REDIS_HOSTNAME_ENV_VAR)

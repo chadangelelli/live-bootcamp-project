@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use color_eyre::eyre::Context;
 use redis::{Commands, Connection};
+use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
@@ -29,7 +30,7 @@ const TWO_FA_CODE_PREFIX: &str = "two_fa_code:";
 
 #[tracing::instrument(name = "Make 2FA Key", skip_all)]
 fn make_2fa_key(email: &Email) -> String {
-    format!("{}{}", TWO_FA_CODE_PREFIX, email.as_ref())
+    format!("{}{}", TWO_FA_CODE_PREFIX, email.as_ref().expose_secret())
 }
 
 #[async_trait::async_trait]
@@ -42,8 +43,11 @@ impl TwoFACodeStore for RedisTwoFACodeStore {
         code: TwoFACode,
     ) -> Result<(), TwoFACodeStoreError> {
         let key = make_2fa_key(&email);
-        let value = serde_json::to_string(&TwoFATuple(login_attempt_id.0, code.0))
-            .map_err(|e| TwoFACodeStoreError::UnexpectedError(e.into()))?;
+        let value = serde_json::to_string(&TwoFATuple(
+            login_attempt_id.as_ref().expose_secret().to_owned(),
+            code.as_ref().expose_secret().to_owned(),
+        ))
+        .map_err(|e| TwoFACodeStoreError::UnexpectedError(e.into()))?;
         let mut conn = self.conn.write().await;
         let _: () = conn
             .set_ex(key, value, TEN_MINUTES_IN_SECONDS)

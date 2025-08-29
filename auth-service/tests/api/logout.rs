@@ -1,4 +1,5 @@
 use reqwest::Url;
+use secrecy::Secret;
 
 use crate::helpers::{get_random_email, signup_and_login, TestApp};
 use auth_service::utils::constants::JWT_COOKIE_NAME;
@@ -57,7 +58,9 @@ async fn should_return_200_if_valid_jwt_cookie() {
 
     {
         let banned_token_store = app.banned_token_store.read().await;
-        let token_banned = banned_token_store.token_exists(token).await;
+        let token_banned = banned_token_store
+            .token_exists(&Secret::new(token.to_string()))
+            .await;
         assert!(token_banned);
     }
 

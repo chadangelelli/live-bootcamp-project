@@ -41,6 +41,8 @@ impl TwoFACodeStore for HashmapTwoFACodeStore {
 
 #[cfg(test)]
 mod tests {
+    use secrecy::Secret;
+
     use crate::{
         domain::{data_stores::TwoFACodeStore, Email, LoginAttemptId, TwoFACode},
         services::data_stores::HashmapTwoFACodeStore,
@@ -49,7 +51,7 @@ mod tests {
     async fn add_code() -> (HashmapTwoFACodeStore, Email) {
         let mut store = HashmapTwoFACodeStore::default();
 
-        let email = Email::parse("test@example.com".to_string()).unwrap();
+        let email = Email::parse(Secret::new("test@example.com".to_string())).unwrap();
         let login_attempt_id = LoginAttemptId::default();
         let code = TwoFACode::parse("123456".to_string()).unwrap();
 

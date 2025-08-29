@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use color_eyre::eyre::{Result, WrapErr};
 use redis::{Commands, Connection};
+use secrecy::{ExposeSecret, Secret};
 use tokio::sync::RwLock;
 
 use crate::{
@@ -23,8 +24,8 @@ impl RedisBannedTokenStore {
 #[async_trait::async_trait]
 impl BannedTokenStore for RedisBannedTokenStore {
     #[tracing::instrument(name = "Add Banned Token", skip_all)]
-    async fn add_token(&mut self, token: String) -> Result<()> {
-        let key = make_token_key(&token);
+    async fn add_token(&mut self, token: Secret<String>) -> Result<()> {
+        let key = make_token_key(token.expose_secret());
         let value = true;
 
         let mut conn = self.conn.write().await;
@@ -47,8 +48,8 @@ impl BannedTokenStore for RedisBannedTokenStore {
     }
 
     #[tracing::instrument(name = "Check if Token is Banned", skip_all)]
-    async fn token_exists(&self, token: &str) -> bool {
-        let key = make_token_key(token);
+    async fn token_exists(&self, token: &Secret<String>) -> bool {
+        let key = make_token_key(token.expose_secret());
         let mut conn = self.conn.write().await;
         match conn.exists::<_, bool>(key) {
             Ok(exists) => exists,

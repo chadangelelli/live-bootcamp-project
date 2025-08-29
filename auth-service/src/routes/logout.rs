@@ -1,5 +1,6 @@
 use axum::{extract::State, http::StatusCode, response::IntoResponse};
 use axum_extra::extract::{cookie::Cookie, CookieJar};
+use secrecy::Secret;
 
 use crate::utils::auth::validate_token;
 use crate::utils::constants::JWT_COOKIE_NAME;
@@ -19,7 +20,7 @@ pub async fn logout(
     {
         let mut banned_token_store = state.banned_token_store.write().await;
         banned_token_store
-            .add_token(token)
+            .add_token(Secret::new(token))
             .await
             .map_err(|e| AuthApiError::UnexpectedError(e))?;
     }

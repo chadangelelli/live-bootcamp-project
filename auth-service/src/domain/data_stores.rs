@@ -1,8 +1,7 @@
-use core::fmt;
-
 use color_eyre::eyre::{eyre, Context, Report, Result};
 use lazy_static::lazy_static;
 use regex::Regex;
+use secrecy::{ExposeSecret, Secret};
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -47,9 +46,9 @@ impl PartialEq for UserStoreError {
 
 #[async_trait::async_trait]
 pub trait BannedTokenStore: Send + Sync {
-    async fn add_token(&mut self, token: String) -> Result<()>;
+    async fn add_token(&mut self, token: Secret<String>) -> Result<()>;
     async fn get_token(&self, token: &str) -> Option<&String>;
-    async fn token_exists(&self, token: &str) -> bool;
+    async fn token_exists(&self, token: &Secret<String>) -> bool;
 }
 
 #[derive(Debug, Error)]
@@ -108,51 +107,56 @@ impl PartialEq for TwoFACodeStoreError {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct LoginAttemptId(pub String);
+#[derive(Debug, Clone)]
+pub struct LoginAttemptId(Secret<String>);
 
 impl LoginAttemptId {
     pub fn parse(id: String) -> Result<Self> {
         let parsed_id = Uuid::parse_str(&id).wrap_err("Invalid login attempt id")?;
-        Ok(Self(parsed_id.to_string()))
+        Ok(Self(Secret::new(parsed_id.to_string())))
     }
 
     // Alias to LoginAttemptId::default()
     pub fn generate_random() -> Self {
-        LoginAttemptId(Uuid::new_v4().to_string())
+        LoginAttemptId::default()
     }
 }
 
 impl Default for LoginAttemptId {
     fn default() -> Self {
-        LoginAttemptId(Uuid::new_v4().to_string())
+        LoginAttemptId(Secret::new(Uuid::new_v4().to_string()))
     }
 }
 
-impl AsRef<str> for LoginAttemptId {
-    fn as_ref(&self) -> &str {
+impl PartialEq for LoginAttemptId {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.expose_secret() == other.0.expose_secret()
+    }
+}
+
+impl AsRef<Secret<String>> for LoginAttemptId {
+    fn as_ref(&self) -> &Secret<String> {
         &self.0
     }
 }
 
-impl fmt::Display for LoginAttemptId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "LoginAttemptId: {}", self.0)
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct TwoFACode(pub String);
+#[derive(Clone, Debug)]
+pub struct TwoFACode(Secret<String>);
 
 lazy_static! {
     static ref TWO_FA_CODE_REGEX: Regex = Regex::new(r"^\d{6}$").unwrap();
 }
 
+impl PartialEq for TwoFACode {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.expose_secret() == other.0.expose_secret()
+    }
+}
 /// `code` is a valid 6-digit String
 impl TwoFACode {
     pub fn parse(code: String) -> Result<Self> {
         if TWO_FA_CODE_REGEX.is_match(&code) {
-            Ok(Self(code))
+            Ok(Self(Secret::new(code)))
         } else {
             Err(eyre!("Invalid 2FA code"))
         }
@@ -168,12 +172,12 @@ impl Default for TwoFACode {
     fn default() -> Self {
         let mut range = rand::thread_rng();
         let code = rand::Rng::gen_range(&mut range, 100_000..=999_999);
-        Self(code.to_string())
+        Self(Secret::new(code.to_string()))
     }
 }
 
-impl AsRef<str> for TwoFACode {
-    fn as_ref(&self) -> &str {
+impl AsRef<Secret<String>> for TwoFACode {
+    fn as_ref(&self) -> &Secret<String> {
         &self.0
     }
 }

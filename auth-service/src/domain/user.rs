@@ -20,6 +20,8 @@ impl User {
 
 #[cfg(test)]
 mod tests {
+    use secrecy::{ExposeSecret, Secret};
+
     use super::*;
 
     #[tokio::test]
@@ -28,13 +30,13 @@ mod tests {
         let correct_password = "Valid1@Password";
 
         let user = User::new(
-            Email::parse(correct_email.to_string()).unwrap(),
-            Password::parse(correct_password.to_string(), false).unwrap(),
+            Email::parse(Secret::new(correct_email.to_string())).unwrap(),
+            Password::parse(Secret::new(correct_password.to_string()), false).unwrap(),
             true,
         );
 
-        assert_eq!(user.email.as_ref(), correct_email);
+        assert_eq!(user.email.as_ref().expose_secret(), correct_email);
         assert!(user.requires_2fa);
-        assert_eq!(user.password.as_ref(), correct_password);
+        assert_eq!(user.password.as_ref().expose_secret(), correct_password);
     }
 }

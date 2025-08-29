@@ -1,6 +1,7 @@
 use std::{str::FromStr, sync::Arc};
 
 use reqwest::{cookie::Jar, Client};
+use secrecy::ExposeSecret;
 use serde_json::json;
 use sqlx::{
     postgres::{PgConnectOptions, PgPoolOptions},
@@ -219,15 +220,23 @@ pub async fn signup_and_login(app: &TestApp, email: &str, password: &str) -> req
 }
 
 pub fn get_random_login_attempt_id() -> String {
-    format!("{}", LoginAttemptId::generate_random().as_ref())
+    let id = LoginAttemptId::generate_random()
+        .as_ref()
+        .expose_secret()
+        .to_string();
+    format!("{id}")
 }
 
 pub fn get_random_two_fa_code() -> String {
-    format!("{}", TwoFACode::generate_random().as_ref())
+    let code = TwoFACode::generate_random()
+        .as_ref()
+        .expose_secret()
+        .to_string();
+    format!("{code}")
 }
 
 async fn configure_postgresql() -> (PgPool, String) {
-    let postgresql_conn_url = DATABASE_URL.to_owned();
+    let postgresql_conn_url = DATABASE_URL.expose_secret().to_owned();
 
     // We are creating a new database for each test case, and we need to ensure each database has a unique name!
     let db_name = Uuid::new_v4().to_string();
@@ -237,7 +246,7 @@ async fn configure_postgresql() -> (PgPool, String) {
     let postgresql_conn_url_with_db = format!("{}/{}", postgresql_conn_url, db_name);
 
     // Create a new connection pool and return it
-    let pool = get_postgres_pool(&postgresql_conn_url_with_db)
+    let pool = get_postgres_pool(secrecy::Secret::new(postgresql_conn_url_with_db))
         .await
         .expect("Failed to create Postgres connection pool!");
 
@@ -273,7 +282,7 @@ async fn configure_database(db_conn_string: &str, db_name: &str) {
 }
 
 async fn delete_database(db_name: &str) {
-    let postgresql_conn_url: String = DATABASE_URL.to_owned();
+    let postgresql_conn_url: String = DATABASE_URL.expose_secret().to_owned();
 
     let connection_options = PgConnectOptions::from_str(&postgresql_conn_url)
         .expect("Failed to parse PostgreSQL connection string");
