@@ -1,7 +1,14 @@
+use secrecy::{ExposeSecret, Secret};
 use serde_json::json;
+use wiremock::{
+    matchers::{method, path},
+    Mock, ResponseTemplate,
+};
 
 use crate::helpers::{get_random_email, TestApp};
-use auth_service::utils::constants::JWT_COOKIE_NAME;
+use auth_service::{
+    domain::Email, routes::TwoFactorAuthResponse, utils::constants::JWT_COOKIE_NAME,
+};
 // TODO: add api_test macro
 // use test_helpers::api_test;
 
@@ -84,10 +91,11 @@ async fn should_return_200_if_valid_credentials_and_2fa_disabled() {
 }
 
 // TODO: add api_test macro
+
 /*
 #[tokio::test]
 async fn should_return_206_if_valid_credentials_and_2fa_enabled() {
-    let app = TestApp::new().await;
+    let mut app = TestApp::new().await;
 
     let random_email = get_random_email();
     let password = "P4sSword123!";
@@ -118,13 +126,24 @@ async fn should_return_206_if_valid_credentials_and_2fa_enabled() {
 
     assert_eq!(json_body.message, "2FA required".to_owned());
 
-    let email = Email::parse(random_email.clone()).unwrap();
-    let lock = app.two_fa_code_store.read().await;
-    let (login_attempt_id, code) = lock.get_code(&email).await.unwrap();
+    let email = Email::parse(Secret::new(random_email.clone())).unwrap();
+    let (login_attempt_id, code) = {
+        let lock = &app.two_fa_code_store.read().await;
+        lock.get_code(&email).await.unwrap()
+    };
 
-    assert_eq!(login_attempt_id.as_ref().len(), 36);
-    assert!(!login_attempt_id.as_ref().is_empty());
-    assert!(!code.as_ref().is_empty());
+    assert_eq!(login_attempt_id.as_ref().expose_secret().len(), 36);
+    assert!(!login_attempt_id.as_ref().expose_secret().is_empty());
+    assert!(!code.as_ref().expose_secret().is_empty());
+
+    // Define an expectation for the mock server
+    Mock::given(path("/email")) // Expect an HTTP request to the "/email" path
+        .and(method("POST")) // Expect the HTTP method to be POST
+        .respond_with(ResponseTemplate::new(200)) // Respond with an HTTP 200 OK status
+        .expect(1) // Expect this request to be made exactly once
+        .mount(&app.email_server) // Mount this expectation on the mock email server
+        .await; // Await the asynchronous operation to ensure the mock server is set up before proceeding
+
+    app.clean_up().await;
 }
-
  */

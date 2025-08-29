@@ -1,7 +1,7 @@
 use std::{str::FromStr, sync::Arc};
 
 use reqwest::{cookie::Jar, Client};
-use secrecy::ExposeSecret;
+use secrecy::{ExposeSecret, Secret};
 use serde_json::json;
 use sqlx::{
     postgres::{PgConnectOptions, PgPoolOptions},
@@ -11,7 +11,7 @@ use tokio::sync::RwLock;
 
 use auth_service::{
     app_state::{AppState, BannedTokenStoreType, TwoFACodeStoreType},
-    domain::{LoginAttemptId, TwoFACode},
+    domain::{Email, LoginAttemptId, TwoFACode},
     get_postgres_pool, get_redis_client,
     services::{
         data_stores::{
@@ -20,6 +20,7 @@ use auth_service::{
             redis_two_fa_code_store::RedisTwoFACodeStore,
         },
         mock_email_client::MockEmailClient,
+        postmark_email_client::PostmarkEmailClient,
     },
     utils::{
         constants::{test, DATABASE_URL},
@@ -28,15 +29,17 @@ use auth_service::{
     Application,
 };
 use uuid::Uuid;
+use wiremock::MockServer;
 
 pub struct TestApp {
     pub address: String,
-    pub cookie_jar: Arc<Jar>,
-    pub db_name: String,
     pub banned_token_store: BannedTokenStoreType,
-    pub two_fa_code_store: TwoFACodeStoreType,
-    pub http_client: reqwest::Client,
+    pub cookie_jar: Arc<Jar>,
     pub clean_up_called: bool,
+    pub db_name: String,
+    pub email_server: MockServer,
+    pub http_client: reqwest::Client,
+    pub two_fa_code_store: TwoFACodeStoreType,
 }
 
 impl TestApp {
@@ -56,7 +59,10 @@ impl TestApp {
 
         let two_fa_code_store = Arc::new(RwLock::new(RedisTwoFACodeStore::new(redis_conn)));
 
-        let email_client = Arc::new(MockEmailClient);
+        // Set up a mock email server
+        let email_server = MockServer::start().await; // New!
+        let base_url = email_server.uri(); // New!
+        let email_client = Arc::new(configure_postmark_email_client(base_url)); // Updated!
 
         let app_state = AppState::new(
             user_store,
@@ -83,12 +89,13 @@ impl TestApp {
 
         TestApp {
             address,
-            cookie_jar,
-            db_name,
-            http_client,
             banned_token_store,
-            two_fa_code_store,
+            cookie_jar,
             clean_up_called: false,
+            db_name,
+            email_server,
+            http_client,
+            two_fa_code_store,
         }
     }
 
@@ -313,6 +320,19 @@ async fn delete_database(db_name: &str) {
         .execute(format!(r#"DROP DATABASE "{}";"#, db_name).as_str())
         .await
         .expect("Failed to drop the database.");
+}
+
+fn configure_postmark_email_client(base_url: String) -> PostmarkEmailClient {
+    let postmark_auth_token = Secret::new("auth_token".to_owned());
+
+    let sender = Email::parse(Secret::new(test::email_client::SENDER.to_owned())).unwrap();
+
+    let http_client = Client::builder()
+        .timeout(test::email_client::TIMEOUT)
+        .build()
+        .expect("Failed to build HTTP client");
+
+    PostmarkEmailClient::new(base_url, sender, postmark_auth_token, http_client)
 }
 
 // TODO: implement api_test macro
