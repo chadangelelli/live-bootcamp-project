@@ -19,7 +19,6 @@ use auth_service::{
             redis_banned_token_store::RedisBannedTokenStore,
             redis_two_fa_code_store::RedisTwoFACodeStore,
         },
-        mock_email_client::MockEmailClient,
         postmark_email_client::PostmarkEmailClient,
     },
     utils::{
@@ -60,7 +59,7 @@ impl TestApp {
         let two_fa_code_store = Arc::new(RwLock::new(RedisTwoFACodeStore::new(redis_conn)));
 
         // Set up a mock email server
-        let email_server = MockServer::start().await; // New!
+        let email_server = MockServer::start().await;
         let base_url = email_server.uri(); // New!
         let email_client = Arc::new(configure_postmark_email_client(base_url)); // Updated!
 
@@ -126,12 +125,16 @@ impl TestApp {
     where
         Body: serde::Serialize,
     {
-        self.http_client
+        println!("---------------> [post_login] 1");
+        let ret = self
+            .http_client
             .post(&format!("{}/login", &self.address))
             .json(body)
             .send()
             .await
-            .expect("Failed to execute login request.")
+            .expect("Failed to execute login request.");
+        println!("---------------> [post_login] 2 > {ret:?}");
+        ret
     }
 
     pub async fn post_logout(&self) -> reqwest::Response {
@@ -177,6 +180,7 @@ impl TestApp {
     }
 }
 
+/*
 impl Drop for TestApp {
     fn drop(&mut self) {
         if !self.clean_up_called {
@@ -184,6 +188,7 @@ impl Drop for TestApp {
         }
     }
 }
+ */
 
 pub fn get_random_email() -> String {
     format!("{}@example.com", uuid::Uuid::new_v4())

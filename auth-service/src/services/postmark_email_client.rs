@@ -33,9 +33,12 @@ impl PostmarkEmailClient {
 impl EmailClient for PostmarkEmailClient {
     #[tracing::instrument(name = "Sending email", skip_all)] // Trace this function, skipping logging its parameters
     async fn send_email(&self, recipient: &Email, subject: &str, content: &str) -> Result<()> {
+        println!("---------------> [send_email] 1. ");
         // Parse the base URL and join it with the email endpoint
         let base = Url::parse(&self.base_url)?;
+        println!("---------------> [send_email] 2. base: {base}");
         let url = base.join("/email")?;
+        println!("---------------> [send_email] 3. url: {url}");
 
         // Create the request body for sending the email
         let request_body = SendEmailRequest {
@@ -46,6 +49,7 @@ impl EmailClient for PostmarkEmailClient {
             text_body: content,
             message_stream: MESSAGE_STREAM,
         };
+        println!("---------------> [send_email] 4. request_body: {request_body:#?}");
 
         // Build the HTTP POST request
         let request = self
@@ -56,9 +60,11 @@ impl EmailClient for PostmarkEmailClient {
                 self.authorization_token.expose_secret(), // Securely expose the authorization token
             )
             .json(&request_body);
+        println!("---------------> [send_email] 5. request: {request:#?}");
 
         // Send the request and handle the response
         request.send().await?.error_for_status()?;
+        println!("---------------> [send_email] 6. Email sent successfully.");
 
         Ok(())
     }

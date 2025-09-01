@@ -91,8 +91,6 @@ async fn should_return_200_if_valid_credentials_and_2fa_disabled() {
 }
 
 // TODO: add api_test macro
-
-/*
 #[tokio::test]
 async fn should_return_206_if_valid_credentials_and_2fa_enabled() {
     let mut app = TestApp::new().await;
@@ -109,6 +107,14 @@ async fn should_return_206_if_valid_credentials_and_2fa_enabled() {
     let signup_response = app.post_signup(&signup_body).await;
 
     assert_eq!(signup_response.status().as_u16(), 201);
+
+    // Define an expectation for the mock server
+    Mock::given(path("/email")) // Expect an HTTP request to the "/email" path
+        .and(method("POST")) // Expect the HTTP method to be POST
+        .respond_with(ResponseTemplate::new(200)) // Respond with an HTTP 200 OK status
+        .expect(1) // Expect this request to be made exactly once
+        .mount(&app.email_server) // Mount this expectation on the mock email server
+        .await; // Await the asynchronous operation to ensure the mock server is set up before proceeding
 
     let login_body = serde_json::json!({
         "email": &random_email,
@@ -128,22 +134,15 @@ async fn should_return_206_if_valid_credentials_and_2fa_enabled() {
 
     let email = Email::parse(Secret::new(random_email.clone())).unwrap();
     let (login_attempt_id, code) = {
-        let lock = &app.two_fa_code_store.read().await;
-        lock.get_code(&email).await.unwrap()
+        let lock = app.two_fa_code_store.read().await;
+        let code = lock.get_code(&email).await.unwrap();
+        drop(lock);
+        code
     };
 
     assert_eq!(login_attempt_id.as_ref().expose_secret().len(), 36);
     assert!(!login_attempt_id.as_ref().expose_secret().is_empty());
     assert!(!code.as_ref().expose_secret().is_empty());
 
-    // Define an expectation for the mock server
-    Mock::given(path("/email")) // Expect an HTTP request to the "/email" path
-        .and(method("POST")) // Expect the HTTP method to be POST
-        .respond_with(ResponseTemplate::new(200)) // Respond with an HTTP 200 OK status
-        .expect(1) // Expect this request to be made exactly once
-        .mount(&app.email_server) // Mount this expectation on the mock email server
-        .await; // Await the asynchronous operation to ensure the mock server is set up before proceeding
-
     app.clean_up().await;
 }
- */
